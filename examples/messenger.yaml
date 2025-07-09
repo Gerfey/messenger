@@ -1,0 +1,29 @@
+default_bus: message.bus
+
+buses:
+  message.bus: ~
+  command.bus: ~
+  query.bus: ~
+
+transports:
+  in-memory:
+    dsn: "in-memory://"
+
+  amqp:
+    dsn: "%env(MESSENGER_AMQP_DSN)%"
+    options:
+      auto_setup: true
+      exchange:
+        name: test.exchange
+        type: topic
+        durable: true
+        auto_delete: false
+        internal: false
+      queues:
+        user.create:
+          durable: true
+          binding_keys:
+            - user_created
+
+routing:
+  messages.UserCreatedMessage: amqp
