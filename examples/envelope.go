@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gerfey/messenger/envelope"
+	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/examples/messages"
 	"github.com/gerfey/messenger/stamps"
 )

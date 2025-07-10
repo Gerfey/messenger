@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gerfey/messenger/bus"
-	"github.com/gerfey/messenger/transport"
+	"github.com/gerfey/messenger/api"
+	"github.com/gerfey/messenger/infrastructure/transport"
 )
 
 type Messenger struct {
-	defaultBus       *bus.Bus
-	busLocator       *bus.BusLocator
+	defaultBus       api.MessageBus
+	busLocator       api.BusLocator
 	transportManager *transport.Manager
 }
 
-func NewMessenger(defaultBus *bus.Bus, manager *transport.Manager, busLocator *bus.BusLocator) *Messenger {
+func NewMessenger(defaultBus api.MessageBus, manager *transport.Manager, busLocator api.BusLocator) api.Messenger {
 	return &Messenger{
 		defaultBus:       defaultBus,
 		busLocator:       busLocator,
@@ -30,11 +30,11 @@ func (m *Messenger) Run(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func (m *Messenger) GetBus() (*bus.Bus, error) {
+func (m *Messenger) GetBus() (api.MessageBus, error) {
 	return m.defaultBus, nil
 }
 
-func (m *Messenger) GetMessageBus() (*bus.Bus, error) {
+func (m *Messenger) GetMessageBus() (api.MessageBus, error) {
 	messageBus, ok := m.busLocator.Get("message.bus")
 	if !ok {
 		return nil, fmt.Errorf("message bus not found")
@@ -43,7 +43,7 @@ func (m *Messenger) GetMessageBus() (*bus.Bus, error) {
 	return messageBus, nil
 }
 
-func (m *Messenger) GetCommandBus() (*bus.Bus, error) {
+func (m *Messenger) GetCommandBus() (api.MessageBus, error) {
 	commandBus, ok := m.busLocator.Get("command.bus")
 	if !ok {
 		return nil, fmt.Errorf("message bus not found")
@@ -52,7 +52,7 @@ func (m *Messenger) GetCommandBus() (*bus.Bus, error) {
 	return commandBus, nil
 }
 
-func (m *Messenger) GetQueryBus() (*bus.Bus, error) {
+func (m *Messenger) GetQueryBus() (api.MessageBus, error) {
 	queueBus, ok := m.busLocator.Get("query.bus")
 	if !ok {
 		return nil, fmt.Errorf("message bus not found")

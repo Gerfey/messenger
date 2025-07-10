@@ -4,8 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/gerfey/messenger/envelope"
-	"github.com/gerfey/messenger/middlewares"
+	"github.com/gerfey/messenger/api"
 )
 
 type LoggerMiddleware struct {
@@ -18,7 +17,7 @@ func NewLoggerMiddleware(log *slog.Logger) *LoggerMiddleware {
 	}
 }
 
-func (l *LoggerMiddleware) Handle(ctx context.Context, env *envelope.Envelope, next middlewares.NextFunc) (*envelope.Envelope, error) {
+func (l *LoggerMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
 	l.logger.Info("message", "message", env.Message())
 
 	return next(ctx, env)

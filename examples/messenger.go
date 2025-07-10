@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/gerfey/messenger/builder"
 	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/examples/handler"
 	"github.com/gerfey/messenger/examples/messages"
 	"github.com/gerfey/messenger/examples/middleware"
-	"github.com/gerfey/messenger/internal/messenger/bootstrap"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 		log.Error("load config: %v", err)
 	}
 
-	builder := bootstrap.NewBuilder(cfg)
+	builder := builder.NewBuilder(cfg)
 
 	_ = builder.RegisterHandler(&handler.UserCreateHandler{})
 
