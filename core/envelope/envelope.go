@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/stamps"
+	"github.com/gerfey/messenger/core/stamps"
 )
 
 type Envelope struct {

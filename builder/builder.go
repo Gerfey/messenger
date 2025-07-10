@@ -74,11 +74,23 @@ func (b *Builder) RegisterTransportFactory(f api.TransportFactory) {
 }
 
 func (b *Builder) Build() (api.Messenger, error) {
+	if err := b.setupMiddlewares(); err != nil {
+		return nil, err
+	}
+
+	if err := b.setupBuses(); err != nil {
+		return nil, err
+	}
+
+	return b.createMessenger()
+}
+
+func (b *Builder) setupMiddlewares() error {
 	router := routing.NewRouter()
 	for msgTypeStr, transportName := range b.cfg.Routing {
 		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
 		if err != nil {
-			return nil, fmt.Errorf("unknown message type in routing: %s", msgTypeStr)
+			return fmt.Errorf("unknown message type in routing: %s", msgTypeStr)
 		}
 		router.RouteTypeTo(t, transportName)
 	}
@@ -97,25 +109,29 @@ func (b *Builder) Build() (api.Messenger, error) {
 		)
 	}
 
+	return nil
+}
+
+func (b *Builder) setupBuses() error {
 	for name, cfg := range b.cfg.Buses {
 		var chain []api.Middleware
 
 		for _, mwName := range cfg.Middleware {
 			mw, err := b.middlewareLocator.Get(mwName)
 			if err != nil {
-				return nil, fmt.Errorf("middleware %q not found", mwName)
+				return fmt.Errorf("middleware %q not found", mwName)
 			}
 			chain = append(chain, mw)
 		}
 
 		sendMessageMiddleware, err := b.middlewareLocator.Get("send_message")
 		if err != nil {
-			return nil, fmt.Errorf("no middleware found for send_message")
+			return fmt.Errorf("no middleware found for send_message")
 		}
 
 		handlerMessageMiddleware, err := b.middlewareLocator.Get("handle_message")
 		if err != nil {
-			return nil, fmt.Errorf("no middleware found for handle_message")
+			return fmt.Errorf("no middleware found for handle_message")
 		}
 
 		chain = append(chain, sendMessageMiddleware)
@@ -125,15 +141,14 @@ func (b *Builder) Build() (api.Messenger, error) {
 
 		errBusRegister := b.busLocator.Register(name, createNewBus)
 		if errBusRegister != nil {
-			return nil, fmt.Errorf("failed to register bus: %w", errBusRegister)
+			return fmt.Errorf("failed to register bus: %w", errBusRegister)
 		}
 	}
 
-	defaultBus, ok := b.busLocator.Get(b.cfg.DefaultBus)
-	if !ok {
-		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
-	}
+	return nil
+}
 
+func (b *Builder) createMessenger() (api.Messenger, error) {
 	busMap := make(map[reflect.Type]string)
 	for _, h := range b.handlersLocator.GetAll() {
 		busName := h.BusName
@@ -171,6 +186,11 @@ func (b *Builder) Build() (api.Messenger, error) {
 		if errTransportLocator != nil {
 			return nil, fmt.Errorf("register transport %q: %w", name, errTransportLocator)
 		}
+	}
+
+	defaultBus, ok := b.busLocator.Get(b.cfg.DefaultBus)
+	if !ok {
+		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
 	}
 
 	return messenger.NewMessenger(defaultBus, manager, b.busLocator), nil

@@ -5,8 +5,8 @@ import (
 	"reflect"
 
 	"github.com/gerfey/messenger/core/envelope"
+	"github.com/gerfey/messenger/core/stamps"
 	"github.com/gerfey/messenger/examples/messages"
-	"github.com/gerfey/messenger/stamps"
 )
 
 func main() {

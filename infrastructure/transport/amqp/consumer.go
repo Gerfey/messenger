@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/stamps"
+	"github.com/gerfey/messenger/core/stamps"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 

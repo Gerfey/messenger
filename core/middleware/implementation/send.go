@@ -6,7 +6,7 @@ import (
 
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/core/routing"
-	"github.com/gerfey/messenger/stamps"
+	"github.com/gerfey/messenger/core/stamps"
 )
 
 type SendMessageMiddleware struct {
