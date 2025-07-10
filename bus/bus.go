@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gerfey/messenger/core"
 	"github.com/gerfey/messenger/envelope"
+	"github.com/gerfey/messenger/middlewares"
 	"github.com/gerfey/messenger/stamps"
 )
 
 type Bus struct {
 	name            string
-	middlewareChain []core.Middleware
+	middlewareChain []middlewares.Middleware
 }
 
-func NewBus(name string, middleware ...core.Middleware) *Bus {
+func NewBus(name string, middleware ...middlewares.Middleware) *Bus {
 	return &Bus{
 		name:            name,
 		middlewareChain: middleware,
@@ -45,7 +45,7 @@ func (b *Bus) DispatchWithEnvelope(ctx context.Context, env *envelope.Envelope) 
 	return b.buildChain()(ctx, env)
 }
 
-func (b *Bus) buildChain() core.NextFunc {
+func (b *Bus) buildChain() middlewares.NextFunc {
 	handler := func(ctx context.Context, env *envelope.Envelope) (*envelope.Envelope, error) {
 		return env, nil
 	}
@@ -57,7 +57,7 @@ func (b *Bus) buildChain() core.NextFunc {
 	return handler
 }
 
-func (b *Bus) createMiddlewareHandler(m core.Middleware, next core.NextFunc) core.NextFunc {
+func (b *Bus) createMiddlewareHandler(m middlewares.Middleware, next middlewares.NextFunc) middlewares.NextFunc {
 	return func(ctx context.Context, env *envelope.Envelope) (*envelope.Envelope, error) {
 		return m.Handle(ctx, env, next)
 	}

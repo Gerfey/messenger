@@ -1,4 +1,4 @@
-package core
+package handler
 
 import (
 	"context"
@@ -15,17 +15,17 @@ type HandlerFunc struct {
 	BusName    string
 }
 
-type HandlersRegistry struct {
+type HandlersLocator struct {
 	handlers map[reflect.Type][]HandlerFunc
 }
 
-func NewHandlerRegistry() *HandlersRegistry {
-	return &HandlersRegistry{
+func NewHandlerLocator() *HandlersLocator {
+	return &HandlersLocator{
 		handlers: make(map[reflect.Type][]HandlerFunc),
 	}
 }
 
-func (r *HandlersRegistry) Register(handler any) error {
+func (r *HandlersLocator) Register(handler any) error {
 	v := reflect.ValueOf(handler)
 	t := reflect.TypeOf(handler)
 
@@ -73,20 +73,21 @@ func (r *HandlersRegistry) Register(handler any) error {
 	return nil
 }
 
-func (r *HandlersRegistry) GetAllHandlers() []HandlerFunc {
+func (r *HandlersLocator) GetAll() []HandlerFunc {
 	var all []HandlerFunc
 	for _, handlers := range r.handlers {
 		all = append(all, handlers...)
 	}
+
 	return all
 }
 
-func (r *HandlersRegistry) GetHandlers(msg any) []HandlerFunc {
+func (r *HandlersLocator) Get(msg any) []HandlerFunc {
 	t := reflect.TypeOf(msg)
 	return r.handlers[t]
 }
 
-func (r *HandlersRegistry) ResolveMessageType(typeStr string) (reflect.Type, error) {
+func (r *HandlersLocator) ResolveMessageType(typeStr string) (reflect.Type, error) {
 	for t := range r.handlers {
 		if t.String() == typeStr {
 			return t, nil
@@ -109,31 +110,7 @@ func runtimeFuncName(i any) string {
 	return strconv.Itoa(int(reflect.ValueOf(i).Pointer()))
 }
 
-func (r *HandlersRegistry) registerViaInterface(handler any) error {
-	hValue := reflect.ValueOf(handler)
-	hType := reflect.TypeOf(handler)
-
-	method, ok := hType.MethodByName("Handle")
-	if !ok {
-		return fmt.Errorf("method Handle not found")
-	}
-
-	if method.Type.NumIn() < 3 {
-		return fmt.Errorf("handle method must accept (context.Context, Message)")
-	}
-
-	inType := method.Type.In(2)
-
-	r.handlers[inType] = append(r.handlers[inType], HandlerFunc{
-		Fn:         hValue.MethodByName("Handle"),
-		InputType:  inType,
-		HandlerStr: runtimeFuncName(handler),
-	})
-
-	return nil
-}
-
-func (r *HandlersRegistry) parserTagOptions(tag string) map[string]string {
+func (r *HandlersLocator) parserTagOptions(tag string) map[string]string {
 	opts := make(map[string]string)
 
 	parts := strings.Fields(tag)

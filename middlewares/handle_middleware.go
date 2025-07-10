@@ -5,36 +5,36 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gerfey/messenger/core"
 	"github.com/gerfey/messenger/envelope"
+	"github.com/gerfey/messenger/internal/handler"
 	"github.com/gerfey/messenger/stamps"
 )
 
 type HandleMessageMiddleware struct {
-	handlers *core.HandlersRegistry
+	handlersLocator *handler.HandlersLocator
 }
 
-func NewHandleMessageMiddleware(reg *core.HandlersRegistry) *HandleMessageMiddleware {
+func NewHandleMessageMiddleware(handlersLocator *handler.HandlersLocator) *HandleMessageMiddleware {
 	return &HandleMessageMiddleware{
-		handlers: reg,
+		handlersLocator: handlersLocator,
 	}
 }
 
-func (h *HandleMessageMiddleware) Handle(ctx context.Context, env *envelope.Envelope, next core.NextFunc) (*envelope.Envelope, error) {
+func (h *HandleMessageMiddleware) Handle(ctx context.Context, env *envelope.Envelope, next NextFunc) (*envelope.Envelope, error) {
 	if env.LastStampOfType(reflect.TypeOf(stamps.SentStamp{})) != nil {
 		return env, nil
 	}
 
 	msg := env.Message()
 
-	handlers := h.handlers.GetHandlers(msg)
+	handlers := h.handlersLocator.Get(msg)
 
 	if len(handlers) == 0 {
 		return nil, fmt.Errorf("no handlers for message %T", msg)
 	}
 
-	for _, handler := range handlers {
-		results := handler.Fn.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(msg)})
+	for _, handlerFunc := range handlers {
+		results := handlerFunc.Fn.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(msg)})
 
 		var result any
 		var err error
@@ -53,11 +53,11 @@ func (h *HandleMessageMiddleware) Handle(ctx context.Context, env *envelope.Enve
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("handler %s failed: %w", handler.HandlerStr, err)
+			return nil, fmt.Errorf("handler %s failed: %w", handlerFunc.HandlerStr, err)
 		}
 
 		env = env.WithStamp(stamps.HandledStamp{
-			Handler:    handler.HandlerStr,
+			Handler:    handlerFunc.HandlerStr,
 			Result:     result,
 			ResultType: reflect.TypeOf(result),
 		})

@@ -1,7 +1,9 @@
 default_bus: message.bus
 
 buses:
-  message.bus: ~
+  message.bus:
+    middleware:
+      - logger
   command.bus: ~
   query.bus: ~
 

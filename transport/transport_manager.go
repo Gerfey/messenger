@@ -29,7 +29,7 @@ func (m *Manager) AddTransport(t Transport) {
 	m.transports = append(m.transports, t)
 
 	if m.running {
-		m.startTransport(context.Background(), t)
+		m.receiveTransport(context.Background(), t)
 	}
 }
 
@@ -44,11 +44,11 @@ func (m *Manager) Start(ctx context.Context) {
 	m.running = true
 
 	for _, t := range m.transports {
-		m.startTransport(ctx, t)
+		m.receiveTransport(ctx, t)
 	}
 }
 
-func (m *Manager) startTransport(ctx context.Context, t Transport) {
+func (m *Manager) receiveTransport(ctx context.Context, t Transport) {
 	m.wg.Add(1)
 	go func(t Transport) {
 		defer m.wg.Done()

@@ -2,10 +2,8 @@ package middlewares
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
-	"github.com/gerfey/messenger/core"
 	"github.com/gerfey/messenger/envelope"
 	"github.com/gerfey/messenger/routing"
 	"github.com/gerfey/messenger/stamps"
@@ -13,18 +11,21 @@ import (
 )
 
 type SendMessageMiddleware struct {
-	router     *routing.Router
-	transports map[string]transport.Transport
+	router           *routing.Router
+	transportLocator *transport.TransportLocator
 }
 
-func NewSendMessageMiddleware(router *routing.Router, transports map[string]transport.Transport) *SendMessageMiddleware {
+func NewSendMessageMiddleware(
+	router *routing.Router,
+	transportLocator *transport.TransportLocator,
+) *SendMessageMiddleware {
 	return &SendMessageMiddleware{
-		router:     router,
-		transports: transports,
+		router:           router,
+		transportLocator: transportLocator,
 	}
 }
 
-func (m *SendMessageMiddleware) Handle(ctx context.Context, env *envelope.Envelope, next core.NextFunc) (*envelope.Envelope, error) {
+func (m *SendMessageMiddleware) Handle(ctx context.Context, env *envelope.Envelope, next NextFunc) (*envelope.Envelope, error) {
 	if env.LastStampOfType(reflect.TypeOf(stamps.ReceivedStamp{})) != nil {
 		return next(ctx, env)
 	}
@@ -37,10 +38,7 @@ func (m *SendMessageMiddleware) Handle(ctx context.Context, env *envelope.Envelo
 	}
 
 	for _, name := range transportNames {
-		sender, ok := m.transports[name]
-		if !ok {
-			return nil, fmt.Errorf("unknown transport: %s", name)
-		}
+		sender := m.transportLocator.GetTransport(name)
 
 		err := sender.Send(ctx, env)
 		if err != nil {

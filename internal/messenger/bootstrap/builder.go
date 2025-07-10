@@ -10,6 +10,7 @@ import (
 	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/core"
 	"github.com/gerfey/messenger/envelope"
+	"github.com/gerfey/messenger/internal/handler"
 	"github.com/gerfey/messenger/middlewares"
 	"github.com/gerfey/messenger/routing"
 	"github.com/gerfey/messenger/transport"
@@ -19,12 +20,13 @@ import (
 )
 
 type Builder struct {
-	cfg                *config.MessengerConfig
-	resolver           *core.StaticTypeResolver
-	handlerRegistry    *core.HandlersRegistry
-	middlewareRegistry map[string]core.Middleware
-	transportFactory   *factory.TransportFactoryChain
-	messageBusMap      map[reflect.Type]string
+	cfg               *config.MessengerConfig
+	resolver          *core.StaticTypeResolver
+	transportFactory  *factory.TransportFactoryChain
+	handlersLocator   *handler.HandlersLocator
+	transportLocator  *transport.TransportLocator
+	middlewareLocator *middlewares.MiddlewareLocator
+	busLocator        *bus.BusLocator
 }
 
 func NewBuilder(cfg *config.MessengerConfig) *Builder {
@@ -36,12 +38,13 @@ func NewBuilder(cfg *config.MessengerConfig) *Builder {
 	)
 
 	return &Builder{
-		cfg:                cfg,
-		resolver:           resolver,
-		handlerRegistry:    core.NewHandlerRegistry(),
-		middlewareRegistry: make(map[string]core.Middleware),
-		transportFactory:   tf,
-		messageBusMap:      make(map[reflect.Type]string),
+		cfg:               cfg,
+		resolver:          resolver,
+		transportFactory:  tf,
+		handlersLocator:   handler.NewHandlerLocator(),
+		transportLocator:  transport.NewTransportLocator(),
+		middlewareLocator: middlewares.NewMiddlewareLocator(),
+		busLocator:        bus.NewBusLocator(),
 	}
 }
 
@@ -50,19 +53,19 @@ func (b *Builder) RegisterMessage(msg any) {
 }
 
 func (b *Builder) RegisterHandler(handler any) error {
-	if err := b.handlerRegistry.Register(handler); err != nil {
-		return err
+	if err := b.handlersLocator.Register(handler); err != nil {
+		return fmt.Errorf("register handler: %w", err)
 	}
 
-	for _, h := range b.handlerRegistry.GetAllHandlers() {
+	for _, h := range b.handlersLocator.GetAll() {
 		b.resolver.Register(h.InputType.String(), h.InputType)
 	}
 
 	return nil
 }
 
-func (b *Builder) RegisterMiddleware(name string, mw core.Middleware) {
-	b.middlewareRegistry[name] = mw
+func (b *Builder) RegisterMiddleware(name string, mw middlewares.Middleware) {
+	b.middlewareLocator.Register(name, mw)
 }
 
 func (b *Builder) RegisterTransportFactory(f factory.TransportFactory) {
@@ -72,56 +75,68 @@ func (b *Builder) RegisterTransportFactory(f factory.TransportFactory) {
 }
 
 func (b *Builder) Build() (*messenger.Messenger, error) {
-	transports := make(map[string]transport.Transport)
-	for name, tCfg := range b.cfg.Transports {
-		tr, err := b.transportFactory.CreateTransport(name, tCfg)
-		if err != nil {
-			return nil, fmt.Errorf("create transport %q: %w", name, err)
-		}
-		transports[name] = tr
-	}
-
 	router := routing.NewRouter()
 	for msgTypeStr, transportName := range b.cfg.Routing {
-		t, err := b.handlerRegistry.ResolveMessageType(msgTypeStr)
+		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
 		if err != nil {
 			return nil, fmt.Errorf("unknown message type in routing: %s", msgTypeStr)
 		}
 		router.RouteTypeTo(t, transportName)
 	}
 
-	if _, ok := b.middlewareRegistry["send_message"]; !ok {
-		b.middlewareRegistry["send_message"] = middlewares.NewSendMessageMiddleware(router, transports)
-	}
-	if _, ok := b.middlewareRegistry["handle_message"]; !ok {
-		b.middlewareRegistry["handle_message"] = middlewares.NewHandleMessageMiddleware(b.handlerRegistry)
+	if _, errSendMiddleware := b.middlewareLocator.Get("send_message"); errSendMiddleware != nil {
+		b.middlewareLocator.Register(
+			"send_message",
+			middlewares.NewSendMessageMiddleware(router, b.transportLocator),
+		)
 	}
 
-	buses := make(map[string]*bus.Bus)
+	if _, errHandleMiddleware := b.middlewareLocator.Get("handle_message"); errHandleMiddleware != nil {
+		b.middlewareLocator.Register(
+			"handle_message",
+			middlewares.NewHandleMessageMiddleware(b.handlersLocator),
+		)
+	}
+
 	for name, cfg := range b.cfg.Buses {
-		var chain []core.Middleware
-
-		chain = append(chain, b.middlewareRegistry["send_message"])
-		chain = append(chain, b.middlewareRegistry["handle_message"])
+		var chain []middlewares.Middleware
 
 		for _, mwName := range cfg.Middleware {
-			mw, ok := b.middlewareRegistry[mwName]
-			if !ok {
+			mw, err := b.middlewareLocator.Get(mwName)
+			if err != nil {
 				return nil, fmt.Errorf("middleware %q not found", mwName)
 			}
 			chain = append(chain, mw)
 		}
 
-		buses[name] = bus.NewBus(name, chain...)
+		sendMessageMiddleware, err := b.middlewareLocator.Get("send_message")
+		if err != nil {
+			return nil, fmt.Errorf("no middleware found for send_message")
+		}
+
+		handlerMessageMiddleware, err := b.middlewareLocator.Get("handle_message")
+		if err != nil {
+			return nil, fmt.Errorf("no middleware found for handle_message")
+		}
+
+		chain = append(chain, sendMessageMiddleware)
+		chain = append(chain, handlerMessageMiddleware)
+
+		createNewBus := bus.NewBus(name, chain...)
+
+		errBusRegister := b.busLocator.Register(name, createNewBus)
+		if errBusRegister != nil {
+			return nil, fmt.Errorf("failed to register bus: %w", errBusRegister)
+		}
 	}
 
-	defaultBus, ok := buses[b.cfg.DefaultBus]
+	defaultBus, ok := b.busLocator.Get(b.cfg.DefaultBus)
 	if !ok {
-		return nil, fmt.Errorf("default_bus %q not found", b.cfg.DefaultBus)
+		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
 	}
 
 	busMap := make(map[reflect.Type]string)
-	for _, h := range b.handlerRegistry.GetAllHandlers() {
+	for _, h := range b.handlersLocator.GetAll() {
 		busName := h.BusName
 		if busName == "" {
 			busName = b.cfg.DefaultBus
@@ -136,18 +151,28 @@ func (b *Builder) Build() (*messenger.Messenger, error) {
 			busName = b.cfg.DefaultBus
 		}
 
-		selectBus, ok := buses[busName]
+		activeBus, ok := b.busLocator.Get(busName)
 		if !ok {
 			return fmt.Errorf("bus %q not found", busName)
 		}
 
-		_, err := selectBus.DispatchWithEnvelope(ctx, env)
+		_, err := activeBus.DispatchWithEnvelope(ctx, env)
 		return err
 	})
 
-	for _, t := range transports {
-		manager.AddTransport(t)
+	for name, tCfg := range b.cfg.Transports {
+		tr, err := b.transportFactory.CreateTransport(name, tCfg)
+		if err != nil {
+			return nil, fmt.Errorf("create transport %q: %w", name, err)
+		}
+
+		manager.AddTransport(tr)
+
+		errTransportLocator := b.transportLocator.Register(name, tr)
+		if errTransportLocator != nil {
+			return nil, fmt.Errorf("register transport %q: %w", name, errTransportLocator)
+		}
 	}
 
-	return messenger.NewMessenger(defaultBus, manager, transports, buses), nil
+	return messenger.NewMessenger(defaultBus, manager, b.busLocator), nil
 }
