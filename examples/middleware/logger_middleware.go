@@ -7,17 +7,17 @@ import (
 	"github.com/gerfey/messenger/api"
 )
 
-type LoggerMiddleware struct {
+type ExampleLoggerMiddleware struct {
 	logger *slog.Logger
 }
 
-func NewLoggerMiddleware(log *slog.Logger) *LoggerMiddleware {
-	return &LoggerMiddleware{
+func NewExampleLoggerMiddleware(log *slog.Logger) *ExampleLoggerMiddleware {
+	return &ExampleLoggerMiddleware{
 		logger: log,
 	}
 }
 
-func (l *LoggerMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
+func (l *ExampleLoggerMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
 	l.logger.Info("message", "message", env.Message())
 
 	return next(ctx, env)

@@ -1,16 +1,11 @@
-default_bus: message.bus
+default_bus: default
 
 buses:
-  message.bus:
+  default:
     middleware:
       - logger
-  command.bus: ~
-  query.bus: ~
 
 transports:
-  in-memory:
-    dsn: "in-memory://"
-
   amqp:
     dsn: "%env(MESSENGER_AMQP_DSN)%"
     options:
@@ -22,10 +17,10 @@ transports:
         auto_delete: false
         internal: false
       queues:
-        user.create:
+        test:
           durable: true
           binding_keys:
-            - user_created
+            - test_routing_key
 
 routing:
-  messages.UserCreatedMessage: amqp
+  messages.ExampleHelloMessage: amqp

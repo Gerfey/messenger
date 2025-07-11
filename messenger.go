@@ -34,29 +34,11 @@ func (m *Messenger) GetBus() (api.MessageBus, error) {
 	return m.defaultBus, nil
 }
 
-func (m *Messenger) GetMessageBus() (api.MessageBus, error) {
-	messageBus, ok := m.busLocator.Get("message.bus")
+func (m *Messenger) GetBusWith(name string) (api.MessageBus, error) {
+	bus, ok := m.busLocator.Get(name)
 	if !ok {
-		return nil, fmt.Errorf("message bus not found")
+		return nil, fmt.Errorf("bus not found")
 	}
 
-	return messageBus, nil
-}
-
-func (m *Messenger) GetCommandBus() (api.MessageBus, error) {
-	commandBus, ok := m.busLocator.Get("command.bus")
-	if !ok {
-		return nil, fmt.Errorf("message bus not found")
-	}
-
-	return commandBus, nil
-}
-
-func (m *Messenger) GetQueryBus() (api.MessageBus, error) {
-	queueBus, ok := m.busLocator.Get("query.bus")
-	if !ok {
-		return nil, fmt.Errorf("message bus not found")
-	}
-
-	return queueBus, nil
+	return bus, nil
 }

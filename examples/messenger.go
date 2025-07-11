@@ -22,13 +22,13 @@ func main() {
 		log.Error("load config: %v", err)
 	}
 
-	builder := builder.NewBuilder(cfg)
+	b := builder.NewBuilder(cfg)
 
-	_ = builder.RegisterHandler(&handler.UserCreateHandler{})
+	_ = b.RegisterHandler(&handler.ExampleHelloHandler{})
 
-	builder.RegisterMiddleware("logger", middleware.NewLoggerMiddleware(log))
+	b.RegisterMiddleware("logger", middleware.NewExampleLoggerMiddleware(log))
 
-	messenger, err := builder.Build()
+	messenger, err := b.Build()
 	if err != nil {
 		log.Error("builder messenger: %v", err)
 	}
@@ -44,9 +44,8 @@ func main() {
 		log.Error("messenger bus: %v", err)
 	}
 
-	_, _ = messengerBus.Dispatch(ctx, &messages.UserCreatedMessage{
-		ID:   1,
-		Name: "Alice",
+	_, _ = messengerBus.Dispatch(ctx, &messages.ExampleHelloMessage{
+		Text: "Hello World",
 	})
 
 	time.Sleep(3 * time.Second)

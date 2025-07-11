@@ -1,9 +1,9 @@
 package messages
 
-type HelloMessage struct {
+type ExampleHelloMessage struct {
 	Text string
 }
 
-func (m *HelloMessage) RoutingKey() string {
+func (m *ExampleHelloMessage) RoutingKey() string {
 	return "test_routing_key"
 }
