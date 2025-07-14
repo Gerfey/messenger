@@ -16,12 +16,12 @@ type YAMLParser struct{}
 func (p *YAMLParser) Parse(content []byte, cfg interface{}) error {
 	reader := bytes.NewReader(content)
 
-	if errDefault := defaults.Set(cfg); errDefault != nil {
-		return errDefault
-	}
-
 	if errParseYAML := cleanenv.ParseYAML(reader, cfg); errParseYAML != nil {
 		return errParseYAML
+	}
+
+	if errDefault := defaults.Set(cfg); errDefault != nil {
+		return errDefault
 	}
 
 	return nil

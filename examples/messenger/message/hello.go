@@ -1,4 +1,4 @@
-package messages
+package message
 
 type ExampleHelloMessage struct {
 	Text string

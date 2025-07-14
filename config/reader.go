@@ -4,6 +4,10 @@ import (
 	"os"
 )
 
+type ConfigProcessor interface {
+	Process(content []byte) ([]byte, error)
+}
+
 type ConfigReader interface {
 	Read(path string, processors ...ConfigProcessor) ([]byte, error)
 }

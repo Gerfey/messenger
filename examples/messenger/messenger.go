@@ -7,9 +7,9 @@ import (
 
 	"github.com/gerfey/messenger/builder"
 	"github.com/gerfey/messenger/config"
-	"github.com/gerfey/messenger/examples/handler"
-	"github.com/gerfey/messenger/examples/messages"
-	"github.com/gerfey/messenger/examples/middleware"
+	"github.com/gerfey/messenger/examples/messenger/handler"
+	"github.com/gerfey/messenger/examples/messenger/message"
+	"github.com/gerfey/messenger/examples/messenger/middleware"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 
 	log := slog.Default()
 
-	cfg, err := config.LoadConfig("examples/messenger.yaml")
+	cfg, err := config.LoadConfig("examples/messenger/messenger.yaml")
 	if err != nil {
 		log.Error("load config: %v", err)
 	}
@@ -44,7 +44,7 @@ func main() {
 		log.Error("messenger bus: %v", err)
 	}
 
-	_, _ = messengerBus.Dispatch(ctx, &messages.ExampleHelloMessage{
+	_, _ = messengerBus.Dispatch(ctx, &message.ExampleHelloMessage{
 		Text: "Hello World",
 	})
 

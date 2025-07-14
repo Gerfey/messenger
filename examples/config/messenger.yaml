@@ -1,15 +1,12 @@
 default_bus: default
 
 buses:
-  default:
-    middleware:
-      - logger
+  default: ~
 
 transports:
   amqp:
     dsn: "%env(MESSENGER_AMQP_DSN)%"
     options:
-      auto_setup: true
       exchange:
         name: test.exchange
         type: topic
@@ -23,4 +20,4 @@ transports:
             - test_routing_key
 
 routing:
-  messages.ExampleHelloMessage: amqp
+  examples.ExampleHelloMessage: amqp

@@ -1,0 +1,22 @@
+default_bus: default
+
+buses:
+  default:
+    middleware:
+      - logger
+
+transports:
+  amqp:
+    dsn: "%env(MESSENGER_AMQP_DSN)%"
+    options:
+      auto_setup: true
+      exchange:
+        name: test.exchange
+        type: topic
+      queues:
+        test_queue:
+          binding_keys:
+            - test_routing_key
+
+routing:
+  message.ExampleHelloMessage: amqp
