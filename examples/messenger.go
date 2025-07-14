@@ -39,7 +39,7 @@ func main() {
 		}
 	}()
 
-	messengerBus, err := messenger.GetBus()
+	messengerBus, err := messenger.GetDefaultBus()
 	if err != nil {
 		log.Error("messenger bus: %v", err)
 	}

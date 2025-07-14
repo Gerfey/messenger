@@ -12,7 +12,7 @@ type ExampleHelloHandler struct {
 }
 
 func (u *ExampleHelloHandler) Handle(ctx context.Context, msg *messages.ExampleHelloMessage) error {
-	fmt.Printf("Handled: Text=%d\n", msg.Text)
+	fmt.Printf("Handled: Text=%v\n", msg.Text)
 
 	return nil
 }

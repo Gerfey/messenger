@@ -6,7 +6,6 @@ import (
 
 type MessageBus interface {
 	Dispatch(context.Context, any, ...Stamp) (Envelope, error)
-	DispatchWithEnvelope(context.Context, Envelope) (Envelope, error)
 }
 
 type BusLocator interface {

@@ -74,10 +74,6 @@ func (b *Builder) RegisterTransportFactory(f api.TransportFactory) {
 }
 
 func (b *Builder) Build() (api.Messenger, error) {
-	if err := b.setupMiddlewares(); err != nil {
-		return nil, err
-	}
-
 	if err := b.setupBuses(); err != nil {
 		return nil, err
 	}
@@ -85,7 +81,7 @@ func (b *Builder) Build() (api.Messenger, error) {
 	return b.createMessenger()
 }
 
-func (b *Builder) setupMiddlewares() error {
+func (b *Builder) setupBuses() error {
 	router := routing.NewRouter()
 	for msgTypeStr, transportName := range b.cfg.Routing {
 		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
@@ -95,24 +91,6 @@ func (b *Builder) setupMiddlewares() error {
 		router.RouteTypeTo(t, transportName)
 	}
 
-	if _, errSendMiddleware := b.middlewareLocator.Get("send_message"); errSendMiddleware != nil {
-		b.middlewareLocator.Register(
-			"send_message",
-			implementation.NewSendMessageMiddleware(router, b.transportLocator),
-		)
-	}
-
-	if _, errHandleMiddleware := b.middlewareLocator.Get("handle_message"); errHandleMiddleware != nil {
-		b.middlewareLocator.Register(
-			"handle_message",
-			implementation.NewHandleMessageMiddleware(b.handlersLocator),
-		)
-	}
-
-	return nil
-}
-
-func (b *Builder) setupBuses() error {
 	for name, cfg := range b.cfg.Buses {
 		var chain []api.Middleware
 
@@ -124,20 +102,11 @@ func (b *Builder) setupBuses() error {
 			chain = append(chain, mw)
 		}
 
-		sendMessageMiddleware, err := b.middlewareLocator.Get("send_message")
-		if err != nil {
-			return fmt.Errorf("no middleware found for send_message")
-		}
+		chain = append(chain, implementation.NewAddBusNameMiddleware(name))
+		chain = append(chain, implementation.NewSendMessageMiddleware(router, b.transportLocator))
+		chain = append(chain, implementation.NewHandleMessageMiddleware(b.handlersLocator))
 
-		handlerMessageMiddleware, err := b.middlewareLocator.Get("handle_message")
-		if err != nil {
-			return fmt.Errorf("no middleware found for handle_message")
-		}
-
-		chain = append(chain, sendMessageMiddleware)
-		chain = append(chain, handlerMessageMiddleware)
-
-		createNewBus := bus.NewBus(name, chain...)
+		createNewBus := bus.NewBus(chain...)
 
 		errBusRegister := b.busLocator.Register(name, createNewBus)
 		if errBusRegister != nil {
@@ -170,7 +139,7 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 			return fmt.Errorf("bus %q not found", busName)
 		}
 
-		_, err := activeBus.DispatchWithEnvelope(ctx, env)
+		_, err := activeBus.Dispatch(ctx, env)
 		return err
 	})
 

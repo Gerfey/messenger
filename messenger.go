@@ -30,7 +30,7 @@ func (m *Messenger) Run(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func (m *Messenger) GetBus() (api.MessageBus, error) {
+func (m *Messenger) GetDefaultBus() (api.MessageBus, error) {
 	return m.defaultBus, nil
 }
 
