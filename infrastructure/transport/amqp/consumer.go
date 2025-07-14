@@ -30,47 +30,6 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 	}
 	defer ch.Close()
 
-	if c.cfg.Options.AutoSetup {
-		err := ch.ExchangeDeclare(
-			c.cfg.Options.Exchange.Name,
-			c.cfg.Options.Exchange.Type,
-			c.cfg.Options.Exchange.Durable,
-			c.cfg.Options.Exchange.AutoDelete,
-			c.cfg.Options.Exchange.Internal,
-			false, nil,
-		)
-		if err != nil {
-			return fmt.Errorf("declare exchange: %w", err)
-		}
-
-		for queueName, queueCfg := range c.cfg.Options.Queues {
-			_, err = ch.QueueDeclare(
-				queueName,
-				queueCfg.Durable,
-				queueCfg.AutoDelete,
-				queueCfg.Exclusive,
-				false,
-				nil,
-			)
-			if err != nil {
-				return fmt.Errorf("declare queue: %w", err)
-			}
-
-			for _, bindingKey := range queueCfg.BindingKeys {
-				err := ch.QueueBind(
-					queueName,
-					bindingKey,
-					c.cfg.Options.Exchange.Name,
-					false,
-					nil,
-				)
-				if err != nil {
-					return fmt.Errorf("bind queue: %w", err)
-				}
-			}
-		}
-	}
-
 	for queueName := range c.cfg.Options.Queues {
 		msgs, err := ch.ConsumeWithContext(
 			ctx,

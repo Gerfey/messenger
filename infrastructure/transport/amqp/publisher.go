@@ -40,21 +40,6 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 	}
 	defer ch.Close()
 
-	if p.cfg.Options.AutoSetup {
-		err := ch.ExchangeDeclare(
-			p.cfg.Options.Exchange.Name,
-			p.cfg.Options.Exchange.Type,
-			p.cfg.Options.Exchange.Durable,
-			p.cfg.Options.Exchange.AutoDelete,
-			p.cfg.Options.Exchange.Internal,
-			false,
-			nil,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to declare exchange: %w", err)
-		}
-	}
-
 	routingKey := getRoutingKey(env.Message())
 
 	return ch.PublishWithContext(ctx,
