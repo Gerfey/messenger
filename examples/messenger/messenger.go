@@ -19,7 +19,7 @@ func main() {
 
 	cfg, err := config.LoadConfig("examples/messenger/messenger.yaml")
 	if err != nil {
-		log.Error("load config: %v", err)
+		log.Error("load config", "error", err)
 	}
 
 	b := builder.NewBuilder(cfg)
@@ -30,18 +30,18 @@ func main() {
 
 	messenger, err := b.Build()
 	if err != nil {
-		log.Error("builder messenger: %v", err)
+		log.Error("builder messenger", "error", err)
 	}
 
 	go func() {
 		if err := messenger.Run(ctx); err != nil {
-			log.Error("consumer error: %v", err)
+			log.Error("consumer error", "error", err)
 		}
 	}()
 
 	messengerBus, err := messenger.GetDefaultBus()
 	if err != nil {
-		log.Error("messenger bus: %v", err)
+		log.Error("messenger bus", "error", err)
 	}
 
 	_, _ = messengerBus.Dispatch(ctx, &message.ExampleHelloMessage{

@@ -26,9 +26,11 @@ func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serialize
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
 	ch, err := c.conn.Channel()
 	if err != nil {
-		return fmt.Errorf("failed to open channel: %w", err)
+		return err
 	}
-	defer ch.Close()
+	defer func() {
+		_ = ch.Close()
+	}()
 
 	for queueName := range c.cfg.Options.Queues {
 		msgs, err := ch.ConsumeWithContext(

@@ -36,9 +36,11 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 
 	ch, err := p.conn.Channel()
 	if err != nil {
-		return fmt.Errorf("failed to get channel: %w", err)
+		return fmt.Errorf("failed to open channel: %w", err)
 	}
-	defer ch.Close()
+	defer func() {
+		_ = ch.Close()
+	}()
 
 	routingKey := getRoutingKey(env.Message())
 

@@ -12,6 +12,7 @@ type Transport struct {
 	publisher  *Publisher
 	consumer   *Consumer
 	serializer api.Serializer
+	conn       *Connection
 }
 
 func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport, error) {
@@ -30,10 +31,11 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 		serializer: serializer,
 		publisher:  pub,
 		consumer:   cons,
+		conn:       conn,
 	}
 
 	if cfg.Options.AutoSetup {
-		err := transport.setup(conn)
+		err := transport.setup()
 		if err != nil {
 			return nil, err
 		}
@@ -50,12 +52,14 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 	return t.consumer.Consume(ctx, handler)
 }
 
-func (t *Transport) setup(conn *Connection) error {
-	ch, err := conn.Channel()
+func (t *Transport) setup() error {
+	ch, err := t.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
-	defer ch.Close()
+	defer func() {
+		_ = ch.Close()
+	}()
 
 	err = ch.ExchangeDeclare(
 		t.cfg.Options.Exchange.Name,

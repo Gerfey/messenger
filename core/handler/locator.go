@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/gerfey/messenger/api"
 )
@@ -50,12 +49,11 @@ func (r *Locator) Register(handler any) error {
 
 	busName := ""
 
-	elem := t.Elem()
-	if elem.NumField() > 0 {
-		field := elem.Field(0)
-		tag := field.Tag.Get("messenger")
-		opts := r.parserTagOptions(tag)
-		busName = opts["bus"]
+	messageHandlerType := reflect.TypeOf((*api.MessageHandlerType)(nil)).Elem()
+	if t.Implements(messageHandlerType) {
+		if messageHandler, ok := handler.(api.MessageHandlerType); ok {
+			busName = messageHandler.GetBusName()
+		}
 	}
 
 	r.handlers[msgType] = append(r.handlers[msgType], api.HandlerFunc{
@@ -103,22 +101,4 @@ func (r *Locator) ResolveMessageType(typeStr string) (reflect.Type, error) {
 
 func runtimeFuncName(i any) string {
 	return strconv.Itoa(int(reflect.ValueOf(i).Pointer()))
-}
-
-func (r *Locator) parserTagOptions(tag string) map[string]string {
-	opts := make(map[string]string)
-
-	parts := strings.Fields(tag)
-
-	for _, part := range parts {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(kv[0])
-		val := strings.TrimSpace(kv[1])
-		opts[key] = val
-	}
-
-	return opts
 }

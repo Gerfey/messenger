@@ -17,7 +17,7 @@ func (p *EnvVarProcessor) Process(content []byte) ([]byte, error) {
 		if len(match) == 2 {
 			envName := match[1]
 			envValue := os.Getenv(envName)
-			contentStr = strings.Replace(contentStr, match[0], envValue, -1)
+			contentStr = strings.ReplaceAll(contentStr, match[0], envValue)
 		}
 	}
 

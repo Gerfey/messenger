@@ -17,3 +17,7 @@ type HandlerFunc struct {
 	HandlerStr string
 	BusName    string
 }
+
+type MessageHandlerType interface {
+	GetBusName() string
+}
