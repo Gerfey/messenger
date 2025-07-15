@@ -1,4 +1,4 @@
-package amqp
+package serializer
 
 import (
 	"encoding/json"

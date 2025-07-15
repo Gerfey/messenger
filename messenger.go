@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/infrastructure/transport"
+	"github.com/gerfey/messenger/transport"
 )
 
 type Messenger struct {

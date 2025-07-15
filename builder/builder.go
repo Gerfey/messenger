@@ -13,9 +13,9 @@ import (
 	"github.com/gerfey/messenger/core/middleware"
 	"github.com/gerfey/messenger/core/middleware/implementation"
 	"github.com/gerfey/messenger/core/routing"
-	"github.com/gerfey/messenger/infrastructure/transport"
-	"github.com/gerfey/messenger/infrastructure/transport/amqp"
-	"github.com/gerfey/messenger/infrastructure/transport/inmemory"
+	"github.com/gerfey/messenger/transport"
+	"github.com/gerfey/messenger/transport/amqp"
+	"github.com/gerfey/messenger/transport/inmemory"
 )
 
 type Builder struct {

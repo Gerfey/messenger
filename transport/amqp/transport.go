@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gerfey/messenger/api"
+	serializer2 "github.com/gerfey/messenger/serializer"
 )
 
 type Transport struct {
@@ -21,7 +22,7 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 		return nil, err
 	}
 
-	serializer := NewSerializer(resolver)
+	serializer := serializer2.NewSerializer(resolver)
 
 	pub := NewPublisher(conn, cfg, serializer)
 	cons := NewConsumer(conn, cfg, serializer)
