@@ -5,17 +5,16 @@ import (
 
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/core/envelope"
-	"github.com/gerfey/messenger/core/routing"
 	"github.com/gerfey/messenger/core/stamps"
 )
 
 type SendMessageMiddleware struct {
-	router           *routing.Router
+	router           api.Router
 	transportLocator api.TransportLocator
 }
 
 func NewSendMessageMiddleware(
-	router *routing.Router,
+	router api.Router,
 	transportLocator api.TransportLocator,
 ) api.Middleware {
 	return &SendMessageMiddleware{

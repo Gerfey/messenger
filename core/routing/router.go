@@ -1,12 +1,16 @@
 package routing
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/gerfey/messenger/api"
+)
 
 type Router struct {
 	routes map[reflect.Type][]string
 }
 
-func NewRouter() *Router {
+func NewRouter() api.Router {
 	return &Router{
 		routes: make(map[reflect.Type][]string),
 	}
