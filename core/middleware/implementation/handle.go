@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
+	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/core/stamps"
 )
 
@@ -20,7 +21,8 @@ func NewHandleMessageMiddleware(handlersLocator api.HandlerLocator) api.Middlewa
 }
 
 func (h *HandleMessageMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	if env.LastStampOfType(reflect.TypeOf(stamps.SentStamp{})) != nil {
+	hasSentStamp := envelope.HasStampOf[stamps.SentStamp](env)
+	if hasSentStamp {
 		return env, nil
 	}
 

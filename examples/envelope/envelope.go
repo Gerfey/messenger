@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/core/stamps"
@@ -21,13 +20,9 @@ func main() {
 
 	fmt.Println("Message:", env.Message().(exampleHelloMessage).Text)
 
-	busName := env.LastStampOfType(reflect.TypeOf(stamps.BusNameStamp{}))
-	if busName != nil {
-		fmt.Println("BusName:", busName.(stamps.BusNameStamp).Name)
-	}
+	busName := envelope.LastStampOf[stamps.BusNameStamp](env)
+	fmt.Println("BusName:", busName.Name)
 
-	delay := env.LastStampOfType(reflect.TypeOf(stamps.DelayStamp{}))
-	if delay != nil {
-		fmt.Println("Delay:", delay.(stamps.DelayStamp).Milliseconds)
-	}
+	delay := envelope.LastStampOf[stamps.DelayStamp](env)
+	fmt.Println("Delay:", delay.Milliseconds)
 }

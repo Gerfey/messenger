@@ -2,9 +2,9 @@ package implementation
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/gerfey/messenger/api"
+	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/core/stamps"
 )
 
@@ -19,7 +19,8 @@ func NewAddBusNameMiddleware(busName string) api.Middleware {
 }
 
 func (h *AddBusNameMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	if env.LastStampOfType(reflect.TypeOf(stamps.BusNameStamp{})) == nil {
+	hasBusNameStamp := envelope.HasStampOf[stamps.BusNameStamp](env)
+	if !hasBusNameStamp {
 		env = env.WithStamp(stamps.BusNameStamp{Name: h.busName})
 	}
 

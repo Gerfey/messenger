@@ -2,9 +2,9 @@ package implementation
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/gerfey/messenger/api"
+	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/core/routing"
 	"github.com/gerfey/messenger/core/stamps"
 )
@@ -25,7 +25,8 @@ func NewSendMessageMiddleware(
 }
 
 func (m *SendMessageMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	if env.LastStampOfType(reflect.TypeOf(stamps.ReceivedStamp{})) != nil {
+	receivedStamp := envelope.HasStampOf[stamps.ReceivedStamp](env)
+	if receivedStamp {
 		return next(ctx, env)
 	}
 
