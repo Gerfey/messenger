@@ -7,6 +7,7 @@ import (
 )
 
 type Transport interface {
+	Name() string
 	Send(context.Context, Envelope) error
 	Receive(context.Context, func(context.Context, Envelope) error) error
 }

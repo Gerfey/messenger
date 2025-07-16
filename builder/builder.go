@@ -88,25 +88,25 @@ func (b *Builder) RegisterListener(event any, listener any) {
 }
 
 func (b *Builder) Build() (api.Messenger, error) {
-	if err := b.setupBuses(); err != nil {
-		return nil, err
-	}
-
-	b.registerStamps()
-
-	return b.createMessenger()
-}
-
-func (b *Builder) setupBuses() error {
 	router := routing.NewRouter()
 	for msgTypeStr, transportName := range b.cfg.Routing {
 		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
 		if err != nil {
-			return fmt.Errorf("unknown message type in routing: %s", msgTypeStr)
+			return nil, fmt.Errorf("unknown message type in routing: %s", msgTypeStr)
 		}
 		router.RouteTypeTo(t, transportName)
 	}
 
+	b.registerStamps()
+
+	if err := b.setupBuses(router); err != nil {
+		return nil, err
+	}
+
+	return b.createMessenger(router)
+}
+
+func (b *Builder) setupBuses(router api.Router) error {
 	for name, cfg := range b.cfg.Buses {
 		var chain []api.Middleware
 
@@ -119,7 +119,7 @@ func (b *Builder) setupBuses() error {
 		}
 
 		chain = append(chain, implementation.NewAddBusNameMiddleware(name))
-		chain = append(chain, implementation.NewSendMessageMiddleware(router, b.transportLocator))
+		chain = append(chain, implementation.NewSendMessageMiddleware(router, b.transportLocator, b.eventDispatcher))
 		chain = append(chain, implementation.NewHandleMessageMiddleware(b.handlersLocator))
 
 		createNewBus := bus.NewBus(chain...)
@@ -133,7 +133,7 @@ func (b *Builder) setupBuses() error {
 	return nil
 }
 
-func (b *Builder) createMessenger() (api.Messenger, error) {
+func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 	busMap := make(map[reflect.Type]string)
 	for _, h := range b.handlersLocator.GetAll() {
 		busName := h.BusName
@@ -191,7 +191,7 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 				failureTransport = b.transportLocator.GetTransport(b.cfg.FailureTransport)
 			}
 
-			lst := listener.NewSendFailedMessageForRetryListener(name, retryable, failureTransport, strategy)
+			lst := listener.NewSendFailedMessageForRetryListener(retryable, failureTransport, strategy)
 			b.eventDispatcher.AddListener(event.SendFailedMessageEvent{}, lst)
 		}
 	}
@@ -201,7 +201,7 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
 	}
 
-	return messenger.NewMessenger(b.cfg.DefaultBus, manager, b.busLocator), nil
+	return messenger.NewMessenger(b.cfg.DefaultBus, manager, b.busLocator, router), nil
 }
 
 func (b *Builder) registerStamps() {

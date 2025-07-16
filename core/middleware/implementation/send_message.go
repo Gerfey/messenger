@@ -5,21 +5,25 @@ import (
 
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/core/envelope"
+	"github.com/gerfey/messenger/core/event"
 	"github.com/gerfey/messenger/core/stamps"
 )
 
 type SendMessageMiddleware struct {
 	router           api.Router
 	transportLocator api.TransportLocator
+	eventDispatcher  api.EventDispatcher
 }
 
 func NewSendMessageMiddleware(
 	router api.Router,
 	transportLocator api.TransportLocator,
+	eventDispatcher api.EventDispatcher,
 ) api.Middleware {
 	return &SendMessageMiddleware{
 		router:           router,
 		transportLocator: transportLocator,
+		eventDispatcher:  eventDispatcher,
 	}
 }
 
@@ -33,6 +37,15 @@ func (m *SendMessageMiddleware) Handle(ctx context.Context, env api.Envelope, ne
 
 	if len(transportNames) == 0 {
 		return next(ctx, env)
+	}
+
+	errDispatcher := m.eventDispatcher.Dispatch(ctx, &event.SendMessageToTransportsEvent{
+		Ctx:            ctx,
+		Envelope:       env,
+		TransportNames: transportNames,
+	})
+	if errDispatcher != nil {
+		return nil, errDispatcher
 	}
 
 	for _, name := range transportNames {

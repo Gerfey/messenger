@@ -49,6 +49,10 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 	return transport, nil
 }
 
+func (t *Transport) Name() string {
+	return t.cfg.Name
+}
+
 func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
 	return t.publisher.Publish(ctx, env)
 }

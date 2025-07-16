@@ -36,7 +36,7 @@ func (m *Manager) AddTransport(t api.Transport) {
 	}
 }
 
-func (m *Manager) Start(ctx context.Context) {
+func (m *Manager) Start(ctx context.Context, consumeOnly []string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -47,6 +47,9 @@ func (m *Manager) Start(ctx context.Context) {
 	m.running = true
 
 	for _, t := range m.transports {
+		if !m.stringInSlice(t.Name(), consumeOnly) {
+			continue
+		}
 		m.receiveTransport(ctx, t)
 	}
 }
@@ -57,12 +60,45 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 		defer m.wg.Done()
 
 		err := t.Receive(ctx, func(ctx context.Context, env api.Envelope) error {
+			errMessageReceived := m.eventDispatcher.Dispatch(ctx, event.WorkerMessageReceivedEvent{
+				Ctx:           ctx,
+				Envelope:      env,
+				TransportName: t.Name(),
+			})
+			if errMessageReceived != nil {
+				return errMessageReceived
+			}
+
 			err := m.handler(ctx, env)
-			if err != nil && m.eventDispatcher != nil {
-				_ = m.eventDispatcher.Dispatch(ctx, event.SendFailedMessageEvent{
-					Envelope: env,
-					Error:    err,
+
+			if err != nil {
+				errMessageFailed := m.eventDispatcher.Dispatch(ctx, event.WorkerMessageFailedEvent{
+					Ctx:           ctx,
+					Envelope:      env,
+					TransportName: t.Name(),
+					Error:         err,
 				})
+				if errMessageFailed != nil {
+					return errMessageFailed
+				}
+
+				errSendFailed := m.eventDispatcher.Dispatch(ctx, event.SendFailedMessageEvent{
+					Envelope:      env,
+					Error:         err,
+					TransportName: t.Name(),
+				})
+				if errSendFailed != nil {
+					return errSendFailed
+				}
+			} else {
+				errMessageHandled := m.eventDispatcher.Dispatch(ctx, event.WorkerMessageHandledEvent{
+					Ctx:           ctx,
+					Envelope:      env,
+					TransportName: t.Name(),
+				})
+				if errMessageHandled != nil {
+					return errMessageHandled
+				}
 			}
 
 			return err
@@ -80,4 +116,13 @@ func (m *Manager) Stop() {
 	m.mu.Unlock()
 
 	m.wg.Wait()
+}
+
+func (m *Manager) stringInSlice(s string, list []string) bool {
+	for _, item := range list {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }

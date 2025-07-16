@@ -12,18 +12,22 @@ type Messenger struct {
 	defaultBusName   string
 	busLocator       api.BusLocator
 	transportManager *transport.Manager
+	routing          api.Router
 }
 
-func NewMessenger(defaultBusName string, manager *transport.Manager, busLocator api.BusLocator) api.Messenger {
+func NewMessenger(defaultBusName string, manager *transport.Manager, busLocator api.BusLocator, routing api.Router) api.Messenger {
 	return &Messenger{
 		defaultBusName:   defaultBusName,
 		busLocator:       busLocator,
 		transportManager: manager,
+		routing:          routing,
 	}
 }
 
 func (m *Messenger) Run(ctx context.Context) error {
-	m.transportManager.Start(ctx)
+	usedTransports := m.routing.GetUsedTransports()
+	m.transportManager.Start(ctx, usedTransports)
+
 	<-ctx.Done()
 	m.transportManager.Stop()
 

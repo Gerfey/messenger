@@ -13,20 +13,17 @@ import (
 )
 
 type SendFailedMessageForRetryListener struct {
-	transportName    string
 	transport        api.RetryableTransport
 	failureTransport api.Transport
 	retryStrategy    retry.RetryStrategy
 }
 
 func NewSendFailedMessageForRetryListener(
-	transportName string,
 	transport api.RetryableTransport,
 	failureTransport api.Transport,
 	strategy retry.RetryStrategy,
 ) *SendFailedMessageForRetryListener {
 	return &SendFailedMessageForRetryListener{
-		transportName:    transportName,
 		transport:        transport,
 		failureTransport: failureTransport,
 		retryStrategy:    strategy,
@@ -41,7 +38,7 @@ func (l *SendFailedMessageForRetryListener) Handle(ctx context.Context, evt even
 		return
 	}
 
-	if receivedStamp.Transport != l.transportName {
+	if receivedStamp.Transport != evt.TransportName {
 		return
 	}
 

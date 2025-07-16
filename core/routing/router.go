@@ -30,3 +30,20 @@ func (r *Router) GetTransportFor(msg any) []string {
 func (r *Router) RouteTypeTo(t reflect.Type, transports ...string) {
 	r.routes[t] = transports
 }
+
+func (r *Router) GetUsedTransports() []string {
+	uniq := make(map[string]struct{})
+
+	for _, transports := range r.routes {
+		for _, t := range transports {
+			uniq[t] = struct{}{}
+		}
+	}
+
+	var result []string
+	for t := range uniq {
+		result = append(result, t)
+	}
+
+	return result
+}

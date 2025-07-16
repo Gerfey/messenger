@@ -8,14 +8,20 @@ import (
 )
 
 type Transport struct {
+	cfg   TransportConfig
 	queue []api.Envelope
 	lock  sync.Mutex
 }
 
-func NewTransport() api.Transport {
+func NewTransport(cfg TransportConfig) api.Transport {
 	return &Transport{
+		cfg:   cfg,
 		queue: []api.Envelope{},
 	}
+}
+
+func (t *Transport) Name() string {
+	return t.cfg.Name
 }
 
 func (t *Transport) Send(ctx context.Context, env api.Envelope) error {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gerfey/messenger/examples/messenger/message"
+	"github.com/gerfey/messenger/examples/retry_messenger/message"
 )
 
 type ExampleHelloErrorHandler struct{}

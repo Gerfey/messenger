@@ -20,5 +20,11 @@ func (f *TransportFactory) Supports(dsn string) bool {
 }
 
 func (f *TransportFactory) Create(name string, dsn string, options config.OptionsConfig) (api.Transport, error) {
-	return NewTransport(), nil
+	cfg := TransportConfig{
+		Name:    name,
+		DSN:     dsn,
+		Options: options,
+	}
+
+	return NewTransport(cfg), nil
 }
