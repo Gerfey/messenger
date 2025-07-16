@@ -32,6 +32,24 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 		_ = ch.Close()
 	}()
 
+	poolSize := c.cfg.Options.ConsumerPoolSize
+	if poolSize <= 0 {
+		poolSize = 10
+	}
+
+	type job struct {
+		d amqp.Delivery
+	}
+	jobs := make(chan job)
+
+	for i := 0; i < poolSize; i++ {
+		go func() {
+			for j := range jobs {
+				c.handleDelivery(ctx, j.d, handler)
+			}
+		}()
+	}
+
 	for queueName := range c.cfg.Options.Queues {
 		msgs, err := ch.ConsumeWithContext(
 			ctx,
@@ -51,12 +69,14 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 			for {
 				select {
 				case <-ctx.Done():
+					close(jobs)
+
 					return
 				case d, ok := <-messages:
 					if !ok {
 						return
 					}
-					go c.handleDelivery(ctx, d, handler)
+					jobs <- job{d: d}
 				}
 			}
 		}(queueName, msgs)

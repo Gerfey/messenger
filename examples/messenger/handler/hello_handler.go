@@ -13,7 +13,7 @@ func (u *ExampleHelloHandler) Handle(_ context.Context, msg *message.ExampleHell
 
 	fmt.Printf("Handled: Text=%v\n", msg.Text)
 
-	return fmt.Errorf("simulated failure at attempt")
+	return nil
 }
 
 func (u *ExampleHelloHandler) GetBusName() string {

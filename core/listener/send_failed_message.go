@@ -13,16 +13,23 @@ import (
 )
 
 type SendFailedMessageForRetryListener struct {
-	transportName string
-	transport     api.RetryableTransport
-	retryStrategy retry.RetryStrategy
+	transportName    string
+	transport        api.RetryableTransport
+	failureTransport api.Transport
+	retryStrategy    retry.RetryStrategy
 }
 
-func NewSendFailedMessageForRetryListener(transportName string, transport api.RetryableTransport, strategy retry.RetryStrategy) *SendFailedMessageForRetryListener {
+func NewSendFailedMessageForRetryListener(
+	transportName string,
+	transport api.RetryableTransport,
+	failureTransport api.Transport,
+	strategy retry.RetryStrategy,
+) *SendFailedMessageForRetryListener {
 	return &SendFailedMessageForRetryListener{
-		transportName: transportName,
-		transport:     transport,
-		retryStrategy: strategy,
+		transportName:    transportName,
+		transport:        transport,
+		failureTransport: failureTransport,
+		retryStrategy:    strategy,
 	}
 }
 
@@ -38,19 +45,32 @@ func (l *SendFailedMessageForRetryListener) Handle(ctx context.Context, evt even
 		return
 	}
 
-	var next uint = 1
-
+	var nextRetry uint = 0
 	retryStamp, ok := envelope.LastStampOf[stamps.RedeliveryStamp](env)
 	if ok {
-		next = retryStamp.RetryCount + 1
+		nextRetry = retryStamp.RetryCount + 1
 	}
 
-	delay, shouldRetry := l.retryStrategy.ShouldRetry(next, evt.Error)
+	errorStamp := stamps.ErrorDetailsStamp{
+		ErrorMessage: evt.Error.Error(),
+		FailedAt:     time.Now(),
+		RetryCount:   nextRetry,
+	}
+	env = env.WithStamp(errorStamp)
+
+	delay, shouldRetry := l.retryStrategy.ShouldRetry(nextRetry, evt.Error)
 	if !shouldRetry {
+		if l.failureTransport != nil {
+			err := l.failureTransport.Send(ctx, env)
+			if err != nil {
+				fmt.Printf("failed to send message to failure transport: %v\n", err)
+			}
+		}
+
 		return
 	}
 
-	newEnv := env.WithStamp(stamps.RedeliveryStamp{RetryCount: next})
+	newEnv := env.WithStamp(stamps.RedeliveryStamp{RetryCount: nextRetry})
 
 	time.AfterFunc(delay, func() {
 		err := l.transport.Retry(ctx, newEnv)

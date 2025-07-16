@@ -6,10 +6,11 @@ import (
 )
 
 type MessengerConfig struct {
-	DefaultBus string                     `yaml:"default_bus" default:"default"`
-	Buses      map[string]BusConfig       `yaml:"buses"`
-	Transports map[string]TransportConfig `yaml:"transports"`
-	Routing    map[string]string          `yaml:"routing"`
+	DefaultBus       string                     `yaml:"default_bus" default:"default"`
+	FailureTransport string                     `yaml:"failure_transport"`
+	Buses            map[string]BusConfig       `yaml:"buses"`
+	Transports       map[string]TransportConfig `yaml:"transports"`
+	Routing          map[string]string          `yaml:"routing"`
 }
 
 type BusConfig struct {
@@ -30,9 +31,10 @@ type RetryStrategyConfig struct {
 }
 
 type OptionsConfig struct {
-	AutoSetup bool             `yaml:"auto_setup" default:"true"`
-	Exchange  ExchangeConfig   `yaml:"exchange"`
-	Queues    map[string]Queue `yaml:"queues"`
+	AutoSetup        bool             `yaml:"auto_setup" default:"true"`
+	ConsumerPoolSize int              `yaml:"consumer_pool_size" default:"10"`
+	Exchange         ExchangeConfig   `yaml:"exchange"`
+	Queues           map[string]Queue `yaml:"queues"`
 }
 
 type ExchangeConfig struct {

@@ -173,6 +173,10 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 		if errTransportLocator != nil {
 			return nil, fmt.Errorf("register transport %q: %w", name, errTransportLocator)
 		}
+	}
+
+	for name, tCfg := range b.cfg.Transports {
+		tr := b.transportLocator.GetTransport(name)
 
 		if retryable, ok := tr.(api.RetryableTransport); ok && tCfg.RetryStrategy != nil {
 			strategy := retry.NewMultiplierRetryStrategy(
@@ -182,7 +186,12 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 				tCfg.RetryStrategy.MaxDelay,
 			)
 
-			lst := listener.NewSendFailedMessageForRetryListener(name, retryable, strategy)
+			var failureTransport api.Transport
+			if b.cfg.FailureTransport != "" {
+				failureTransport = b.transportLocator.GetTransport(b.cfg.FailureTransport)
+			}
+
+			lst := listener.NewSendFailedMessageForRetryListener(name, retryable, failureTransport, strategy)
 			b.eventDispatcher.AddListener(event.SendFailedMessageEvent{}, lst)
 		}
 	}
@@ -197,9 +206,5 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 
 func (b *Builder) registerStamps() {
 	b.resolver.RegisterStamp(stamps.BusNameStamp{})
-	b.resolver.RegisterStamp(stamps.SentStamp{})
-	b.resolver.RegisterStamp(stamps.HandledStamp{})
-	b.resolver.RegisterStamp(stamps.ReceivedStamp{})
 	b.resolver.RegisterStamp(stamps.RedeliveryStamp{})
-	b.resolver.RegisterStamp(stamps.RoutingKeyStamp{})
 }
