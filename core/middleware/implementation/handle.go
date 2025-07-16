@@ -21,8 +21,7 @@ func NewHandleMessageMiddleware(handlersLocator api.HandlerLocator) api.Middlewa
 }
 
 func (h *HandleMessageMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	hasSentStamp := envelope.HasStampOf[stamps.SentStamp](env)
-	if hasSentStamp {
+	if _, ok := envelope.LastStampOf[stamps.SentStamp](env); ok {
 		return env, nil
 	}
 

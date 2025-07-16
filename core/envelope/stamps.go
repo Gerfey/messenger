@@ -14,22 +14,22 @@ func StampsOf[T api.Stamp](e api.Envelope) []T {
 	return filtered
 }
 
-func LastStampOf[T api.Stamp](e api.Envelope) T {
+func LastStampOf[T api.Stamp](e api.Envelope) (T, bool) {
 	stamps := StampsOf[T](e)
 	if len(stamps) > 0 {
-		return stamps[len(stamps)-1]
+		return stamps[len(stamps)-1], true
 	}
 	var zero T
-	return zero
+	return zero, false
 }
 
-func FirstStampOf[T api.Stamp](e api.Envelope) T {
+func FirstStampOf[T api.Stamp](e api.Envelope) (T, bool) {
 	stamps := StampsOf[T](e)
 	if len(stamps) > 0 {
-		return stamps[0]
+		return stamps[0], true
 	}
 	var zero T
-	return zero
+	return zero, false
 }
 
 func HasStampOf[T api.Stamp](e api.Envelope) bool {

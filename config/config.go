@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"time"
 )
 
 type MessengerConfig struct {
@@ -16,8 +17,16 @@ type BusConfig struct {
 }
 
 type TransportConfig struct {
-	DSN     string        `yaml:"dsn"`
-	Options OptionsConfig `yaml:"options"`
+	DSN           string               `yaml:"dsn"`
+	RetryStrategy *RetryStrategyConfig `yaml:"retry_strategy"`
+	Options       OptionsConfig        `yaml:"options"`
+}
+
+type RetryStrategyConfig struct {
+	MaxRetries uint          `yaml:"max_retries"`
+	Delay      time.Duration `yaml:"delay"`
+	Multiplier float64       `yaml:"multiplier"`
+	MaxDelay   time.Duration `yaml:"max_delay"`
 }
 
 type OptionsConfig struct {

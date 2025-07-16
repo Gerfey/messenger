@@ -6,19 +6,22 @@ import (
 	"sync"
 
 	"github.com/gerfey/messenger/api"
+	"github.com/gerfey/messenger/core/event"
 )
 
 type Manager struct {
-	transports []api.Transport
-	handler    func(context.Context, api.Envelope) error
-	wg         sync.WaitGroup
-	mu         sync.Mutex
-	running    bool
+	transports      []api.Transport
+	handler         func(context.Context, api.Envelope) error
+	eventDispatcher api.EventDispatcher
+	wg              sync.WaitGroup
+	mu              sync.Mutex
+	running         bool
 }
 
-func NewManager(handler func(context.Context, api.Envelope) error) *Manager {
+func NewManager(handler func(context.Context, api.Envelope) error, eventDispatcher api.EventDispatcher) *Manager {
 	return &Manager{
-		handler: handler,
+		handler:         handler,
+		eventDispatcher: eventDispatcher,
 	}
 }
 
@@ -53,7 +56,18 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 	go func(t api.Transport) {
 		defer m.wg.Done()
 
-		err := t.Receive(ctx, m.handler)
+		err := t.Receive(ctx, func(ctx context.Context, env api.Envelope) error {
+			err := m.handler(ctx, env)
+			if err != nil && m.eventDispatcher != nil {
+				_ = m.eventDispatcher.Dispatch(ctx, event.SendFailedMessageEvent{
+					Envelope: env,
+					Error:    err,
+				})
+			}
+
+			return err
+		})
+
 		if err != nil {
 			_ = fmt.Errorf("receive: %w", err)
 		}

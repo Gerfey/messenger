@@ -19,8 +19,7 @@ func NewAddBusNameMiddleware(busName string) api.Middleware {
 }
 
 func (h *AddBusNameMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	hasBusNameStamp := envelope.HasStampOf[stamps.BusNameStamp](env)
-	if !hasBusNameStamp {
+	if _, ok := envelope.LastStampOf[stamps.BusNameStamp](env); !ok {
 		env = env.WithStamp(stamps.BusNameStamp{Name: h.busName})
 	}
 

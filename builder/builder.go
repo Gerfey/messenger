@@ -9,10 +9,14 @@ import (
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/core/bus"
+	"github.com/gerfey/messenger/core/event"
 	"github.com/gerfey/messenger/core/handler"
+	"github.com/gerfey/messenger/core/listener"
 	"github.com/gerfey/messenger/core/middleware"
 	"github.com/gerfey/messenger/core/middleware/implementation"
+	"github.com/gerfey/messenger/core/retry"
 	"github.com/gerfey/messenger/core/routing"
+	"github.com/gerfey/messenger/core/stamps"
 	"github.com/gerfey/messenger/transport"
 	"github.com/gerfey/messenger/transport/amqp"
 	"github.com/gerfey/messenger/transport/inmemory"
@@ -26,9 +30,10 @@ type Builder struct {
 	transportLocator  api.TransportLocator
 	middlewareLocator api.MiddlewareLocator
 	busLocator        api.BusLocator
+	eventDispatcher   api.EventDispatcher
 }
 
-func NewBuilder(cfg *config.MessengerConfig) *Builder {
+func NewBuilder(cfg *config.MessengerConfig) api.Builder {
 	resolver := NewStaticTypeResolver()
 
 	tf := transport.NewFactoryChain(
@@ -44,6 +49,7 @@ func NewBuilder(cfg *config.MessengerConfig) *Builder {
 		transportLocator:  transport.NewLocator(),
 		middlewareLocator: middleware.NewMiddlewareLocator(),
 		busLocator:        bus.NewLocator(),
+		eventDispatcher:   event.NewEventDispatcher(),
 	}
 }
 
@@ -73,10 +79,20 @@ func (b *Builder) RegisterTransportFactory(f api.TransportFactory) {
 	)
 }
 
+func (b *Builder) RegisterStamp(stamp any) {
+	b.resolver.RegisterStamp(stamp)
+}
+
+func (b *Builder) RegisterListener(event any, listener any) {
+	b.eventDispatcher.AddListener(event, listener)
+}
+
 func (b *Builder) Build() (api.Messenger, error) {
 	if err := b.setupBuses(); err != nil {
 		return nil, err
 	}
+
+	b.registerStamps()
 
 	return b.createMessenger()
 }
@@ -127,7 +143,7 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 		busMap[h.InputType] = busName
 	}
 
-	manager := transport.NewManager(func(ctx context.Context, env api.Envelope) error {
+	handlerManager := func(ctx context.Context, env api.Envelope) error {
 		msgType := reflect.TypeOf(env.Message())
 		busName, ok := busMap[msgType]
 		if !ok {
@@ -141,7 +157,9 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 
 		_, err := activeBus.Dispatch(ctx, env)
 		return err
-	})
+	}
+
+	manager := transport.NewManager(handlerManager, b.eventDispatcher)
 
 	for name, tCfg := range b.cfg.Transports {
 		tr, err := b.transportFactory.CreateTransport(name, tCfg)
@@ -155,6 +173,18 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 		if errTransportLocator != nil {
 			return nil, fmt.Errorf("register transport %q: %w", name, errTransportLocator)
 		}
+
+		if retryable, ok := tr.(api.RetryableTransport); ok && tCfg.RetryStrategy != nil {
+			strategy := retry.NewMultiplierRetryStrategy(
+				tCfg.RetryStrategy.MaxRetries,
+				tCfg.RetryStrategy.Delay,
+				tCfg.RetryStrategy.Multiplier,
+				tCfg.RetryStrategy.MaxDelay,
+			)
+
+			lst := listener.NewSendFailedMessageForRetryListener(name, retryable, strategy)
+			b.eventDispatcher.AddListener(event.SendFailedMessageEvent{}, lst)
+		}
 	}
 
 	defaultBus, ok := b.busLocator.Get(b.cfg.DefaultBus)
@@ -162,5 +192,14 @@ func (b *Builder) createMessenger() (api.Messenger, error) {
 		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
 	}
 
-	return messenger.NewMessenger(defaultBus, manager, b.busLocator), nil
+	return messenger.NewMessenger(b.cfg.DefaultBus, manager, b.busLocator), nil
+}
+
+func (b *Builder) registerStamps() {
+	b.resolver.RegisterStamp(stamps.BusNameStamp{})
+	b.resolver.RegisterStamp(stamps.SentStamp{})
+	b.resolver.RegisterStamp(stamps.HandledStamp{})
+	b.resolver.RegisterStamp(stamps.ReceivedStamp{})
+	b.resolver.RegisterStamp(stamps.RedeliveryStamp{})
+	b.resolver.RegisterStamp(stamps.RoutingKeyStamp{})
 }

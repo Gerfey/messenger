@@ -85,12 +85,21 @@ func (s *Serializer) Unmarshal(body []byte, headers map[string]string) (api.Enve
 				continue
 			}
 
-			ptr := reflect.New(t.Elem()).Interface()
-			if err := json.Unmarshal(sStamp.Data, ptr); err != nil {
-				continue
+			var stampValue any
+			if t.Kind() == reflect.Ptr {
+				stampValue = reflect.New(t.Elem()).Interface()
+				if err := json.Unmarshal(sStamp.Data, stampValue); err != nil {
+					continue
+				}
+			} else {
+				ptrValue := reflect.New(t)
+				if err := json.Unmarshal(sStamp.Data, ptrValue.Interface()); err != nil {
+					continue
+				}
+				stampValue = ptrValue.Elem().Interface()
 			}
 
-			env = env.WithStamp(ptr.(api.Stamp))
+			env = env.WithStamp(stampValue.(api.Stamp))
 		}
 	}
 

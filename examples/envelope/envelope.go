@@ -20,9 +20,9 @@ func main() {
 
 	fmt.Println("Message:", env.Message().(exampleHelloMessage).Text)
 
-	busName := envelope.LastStampOf[stamps.BusNameStamp](env)
+	busName, _ := envelope.LastStampOf[stamps.BusNameStamp](env)
 	fmt.Println("BusName:", busName.Name)
 
-	delay := envelope.LastStampOf[stamps.DelayStamp](env)
+	delay, _ := envelope.LastStampOf[stamps.DelayStamp](env)
 	fmt.Println("Delay:", delay.Milliseconds)
 }

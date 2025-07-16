@@ -25,6 +25,15 @@ func main() {
 	for name, transport := range cfg.Transports {
 		fmt.Printf("  %s:\n", name)
 		fmt.Printf("    DSN: %s\n", transport.DSN)
+
+		if transport.RetryStrategy != nil {
+			fmt.Printf("    Retry_strategy:\n")
+			fmt.Printf("      MaxRetries: %v\n", transport.RetryStrategy.MaxRetries)
+			fmt.Printf("      Delay: %v\n", transport.RetryStrategy.Delay)
+			fmt.Printf("      Multiplier: %v\n", transport.RetryStrategy.Multiplier)
+			fmt.Printf("      MaxDelay: %v\n", transport.RetryStrategy.MaxDelay)
+		}
+
 		fmt.Printf("    Options:\n")
 		fmt.Printf("      AutoSetup: %v\n", transport.Options.AutoSetup)
 		fmt.Printf("      Exchange:\n")

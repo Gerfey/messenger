@@ -3,15 +3,17 @@ package amqp
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/gerfey/messenger/api"
-	serializer2 "github.com/gerfey/messenger/serializer"
+	"github.com/gerfey/messenger/serializer"
 )
 
 type Transport struct {
 	cfg        TransportConfig
 	publisher  *Publisher
 	consumer   *Consumer
+	retry      *Retry
 	serializer api.Serializer
 	conn       *Connection
 }
@@ -22,17 +24,19 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 		return nil, err
 	}
 
-	serializer := serializer2.NewSerializer(resolver)
+	ser := serializer.NewSerializer(resolver)
 
-	pub := NewPublisher(conn, cfg, serializer)
-	cons := NewConsumer(conn, cfg, serializer)
+	pub := NewPublisher(conn, cfg, ser)
+	cons := NewConsumer(conn, cfg, ser)
+	retry := NewRetry(conn, cfg, ser)
 
 	transport := &Transport{
 		cfg:        cfg,
-		serializer: serializer,
+		serializer: ser,
 		publisher:  pub,
 		consumer:   cons,
 		conn:       conn,
+		retry:      retry,
 	}
 
 	if cfg.Options.AutoSetup {
@@ -51,6 +55,10 @@ func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
 
 func (t *Transport) Receive(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
 	return t.consumer.Consume(ctx, handler)
+}
+
+func (t *Transport) Retry(ctx context.Context, env api.Envelope) error {
+	return t.retry.Retry(ctx, env)
 }
 
 func (t *Transport) setup() error {
@@ -103,4 +111,15 @@ func (t *Transport) setup() error {
 	}
 
 	return nil
+}
+
+func getRoutingKey(msg any) string {
+	var routingKey string
+	if rk, ok := msg.(api.RoutedMessage); ok {
+		routingKey = rk.RoutingKey()
+	} else {
+		routingKey = reflect.TypeOf(msg).String()
+	}
+
+	return routingKey
 }

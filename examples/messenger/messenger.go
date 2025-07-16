@@ -17,9 +17,10 @@ func main() {
 
 	log := slog.Default()
 
-	cfg, err := config.LoadConfig("examples/messenger/messenger.yaml")
+	cfg, err := config.LoadConfig("./examples/messenger/messenger.yaml")
 	if err != nil {
-		log.Error("load config", "error", err)
+		log.Error("ERROR load config", "error", err)
+		return
 	}
 
 	b := builder.NewBuilder(cfg)
@@ -48,7 +49,7 @@ func main() {
 		Text: "Hello World",
 	})
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	//<-ctx.Done()
 }

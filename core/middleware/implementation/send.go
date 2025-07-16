@@ -24,8 +24,7 @@ func NewSendMessageMiddleware(
 }
 
 func (m *SendMessageMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	receivedStamp := envelope.HasStampOf[stamps.ReceivedStamp](env)
-	if receivedStamp {
+	if _, ok := envelope.LastStampOf[stamps.ReceivedStamp](env); ok {
 		return next(ctx, env)
 	}
 

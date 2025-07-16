@@ -11,6 +11,11 @@ type Transport interface {
 	Receive(context.Context, func(context.Context, Envelope) error) error
 }
 
+type RetryableTransport interface {
+	Transport
+	Retry(context.Context, Envelope) error
+}
+
 type Sender interface {
 	Send(context.Context, Envelope) error
 }

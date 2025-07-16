@@ -8,12 +8,12 @@ import (
 )
 
 type ConfigParser interface {
-	Parse(content []byte, cfg interface{}) error
+	Parse(content []byte, cfg any) error
 }
 
 type YAMLParser struct{}
 
-func (p *YAMLParser) Parse(content []byte, cfg interface{}) error {
+func (p *YAMLParser) Parse(content []byte, cfg any) error {
 	reader := bytes.NewReader(content)
 
 	if errParseYAML := cleanenv.ParseYAML(reader, cfg); errParseYAML != nil {

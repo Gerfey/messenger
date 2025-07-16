@@ -8,6 +8,11 @@ buses:
 transports:
   amqp:
     dsn: "%env(MESSENGER_AMQP_DSN)%"
+    retry_strategy:
+      max_retries: 5
+      delay: 500ms
+      multiplier: 2
+      max_delay: 5s
     options:
       auto_setup: true
       exchange:

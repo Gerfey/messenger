@@ -34,8 +34,8 @@ func main() {
 		fmt.Printf("  %d: Handler=%s, Result=%v\n", i, stamp.Handler, stamp.Result)
 	}
 
-	firstHandled := envelope.FirstStampOf[stamps.HandledStamp](env)
-	lastHandled := envelope.LastStampOf[stamps.HandledStamp](env)
+	firstHandled, _ := envelope.FirstStampOf[stamps.HandledStamp](env)
+	lastHandled, _ := envelope.LastStampOf[stamps.HandledStamp](env)
 	fmt.Printf("First HandledStamp: Handler=%s, Result=%v\n", firstHandled.Handler, firstHandled.Result)
 	fmt.Printf("Last HandledStamp: Handler=%s, Result=%v\n", lastHandled.Handler, lastHandled.Result)
 

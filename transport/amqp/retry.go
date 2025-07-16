@@ -8,22 +8,22 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type Publisher struct {
+type Retry struct {
 	conn       *Connection
 	cfg        TransportConfig
 	serializer api.Serializer
 }
 
-func NewPublisher(conn *Connection, cfg TransportConfig, serializer api.Serializer) *Publisher {
-	return &Publisher{
+func NewRetry(conn *Connection, cfg TransportConfig, serializer api.Serializer) *Retry {
+	return &Retry{
 		conn:       conn,
 		cfg:        cfg,
 		serializer: serializer,
 	}
 }
 
-func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
-	body, headersMap, err := p.serializer.Marshal(env)
+func (r *Retry) Retry(ctx context.Context, env api.Envelope) error {
+	body, headersMap, err := r.serializer.Marshal(env)
 	if err != nil {
 		return fmt.Errorf("failed to marshal envelope: %w", err)
 	}
@@ -33,7 +33,7 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 		headers[k] = v
 	}
 
-	ch, err := p.conn.Channel()
+	ch, err := r.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
@@ -44,7 +44,7 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 	routingKey := getRoutingKey(env.Message())
 
 	return ch.PublishWithContext(ctx,
-		p.cfg.Options.Exchange.Name,
+		r.cfg.Options.Exchange.Name,
 		routingKey,
 		false,
 		false,

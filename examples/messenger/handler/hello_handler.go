@@ -10,9 +10,10 @@ import (
 type ExampleHelloHandler struct{}
 
 func (u *ExampleHelloHandler) Handle(_ context.Context, msg *message.ExampleHelloMessage) error {
+
 	fmt.Printf("Handled: Text=%v\n", msg.Text)
 
-	return nil
+	return fmt.Errorf("simulated failure at attempt")
 }
 
 func (u *ExampleHelloHandler) GetBusName() string {

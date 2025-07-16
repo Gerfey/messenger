@@ -9,14 +9,14 @@ import (
 )
 
 type Messenger struct {
-	defaultBus       api.MessageBus
+	defaultBusName   string
 	busLocator       api.BusLocator
 	transportManager *transport.Manager
 }
 
-func NewMessenger(defaultBus api.MessageBus, manager *transport.Manager, busLocator api.BusLocator) api.Messenger {
+func NewMessenger(defaultBusName string, manager *transport.Manager, busLocator api.BusLocator) api.Messenger {
 	return &Messenger{
-		defaultBus:       defaultBus,
+		defaultBusName:   defaultBusName,
 		busLocator:       busLocator,
 		transportManager: manager,
 	}
@@ -31,7 +31,12 @@ func (m *Messenger) Run(ctx context.Context) error {
 }
 
 func (m *Messenger) GetDefaultBus() (api.MessageBus, error) {
-	return m.defaultBus, nil
+	bus, ok := m.busLocator.Get(m.defaultBusName)
+	if !ok {
+		return nil, fmt.Errorf("bus not found")
+	}
+
+	return bus, nil
 }
 
 func (m *Messenger) GetBusWith(name string) (api.MessageBus, error) {

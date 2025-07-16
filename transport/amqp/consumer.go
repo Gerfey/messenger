@@ -77,9 +77,7 @@ func (c *Consumer) handleDelivery(ctx context.Context, d amqp.Delivery, handler 
 
 	env, err := c.serializer.Unmarshal(d.Body, headersMap)
 	if err != nil {
-		_ = d.Nack(false, true)
-
-		fmt.Printf("[AMQP] Failed to unmarshal message: %v\n", err)
+		_ = d.Nack(false, false)
 
 		return
 	}
@@ -90,9 +88,7 @@ func (c *Consumer) handleDelivery(ctx context.Context, d amqp.Delivery, handler 
 
 	err = handler(ctx, env)
 	if err != nil {
-		_ = d.Nack(false, true)
-
-		fmt.Printf("[AMQP] Handler error: %v\n", err)
+		_ = d.Nack(false, false)
 
 		return
 	}
