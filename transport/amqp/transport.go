@@ -24,6 +24,10 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 		return nil, err
 	}
 
+	if cfg.Options.ChannelPoolEnabled {
+		conn.InitChannelPool(cfg.Options.ChannelPoolSize)
+	}
+
 	ser := serializer.NewSerializer(resolver)
 
 	pub := NewPublisher(conn, cfg, ser)

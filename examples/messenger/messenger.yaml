@@ -17,6 +17,8 @@ transports:
     options:
       auto_setup: true
       consumer_pool_size: 10
+      channel_pool_enabled: true
+      channel_pool_size: 15
       exchange:
         name: test.exchange
         type: topic

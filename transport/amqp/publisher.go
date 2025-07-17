@@ -33,13 +33,11 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 		headers[k] = v
 	}
 
-	ch, err := p.conn.Channel()
+	ch, err := p.conn.GetChannel()
 	if err != nil {
-		return fmt.Errorf("failed to create AMQP channel for publisher: %w", err)
+		return fmt.Errorf("failed to get AMQP channel for publisher: %w", err)
 	}
-	defer func() {
-		_ = ch.Close()
-	}()
+	defer p.conn.PutChannel(ch)
 
 	routingKey := getRoutingKey(env.Message())
 

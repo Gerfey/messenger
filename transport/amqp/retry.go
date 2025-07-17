@@ -33,13 +33,11 @@ func (r *Retry) Retry(ctx context.Context, env api.Envelope) error {
 		headers[k] = v
 	}
 
-	ch, err := r.conn.Channel()
+	ch, err := r.conn.GetChannel()
 	if err != nil {
-		return fmt.Errorf("failed to create AMQP channel for retry: %w", err)
+		return fmt.Errorf("failed to get AMQP channel for retry: %w", err)
 	}
-	defer func() {
-		_ = ch.Close()
-	}()
+	defer r.conn.PutChannel(ch)
 
 	routingKey := getRoutingKey(env.Message())
 
