@@ -31,25 +31,31 @@ func main() {
 
 	messenger, err := b.Build()
 	if err != nil {
-		log.Error("builder messenger", "error", err)
+		log.Error("failed to build messenger", "error", err)
+		return
 	}
 
 	go func() {
 		if err := messenger.Run(ctx); err != nil {
-			log.Error("consumer error", "error", err)
+			log.Error("messenger run failed", "error", err)
 		}
 	}()
 
 	messengerBus, err := messenger.GetDefaultBus()
 	if err != nil {
-		log.Error("messenger bus", "error", err)
+		log.Error("failed to get default bus", "error", err)
+		return
 	}
 
-	_, _ = messengerBus.Dispatch(ctx, &message.ExampleHelloMessage{
+	_, err = messengerBus.Dispatch(ctx, &message.ExampleHelloMessage{
 		Text: "Hello World",
 	})
+	if err != nil {
+		log.Error("failed to dispatch message", "error", err)
+		return
+	}
 
 	time.Sleep(20 * time.Second)
 
-	//<-ctx.Done()
+	<-ctx.Done()
 }

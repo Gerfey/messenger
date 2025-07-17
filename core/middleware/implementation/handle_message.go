@@ -30,7 +30,7 @@ func (h *HandleMessageMiddleware) Handle(ctx context.Context, env api.Envelope, 
 	handlers := h.handlersLocator.Get(msg)
 
 	if len(handlers) == 0 {
-		return nil, fmt.Errorf("no handlers for message %T", msg)
+		return nil, fmt.Errorf("no handlers registered for message type %T", msg)
 	}
 
 	for _, handlerFunc := range handlers {
@@ -53,7 +53,7 @@ func (h *HandleMessageMiddleware) Handle(ctx context.Context, env api.Envelope, 
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("handler %s failed: %w", handlerFunc.HandlerStr, err)
+			return nil, fmt.Errorf("handler %s failed for message type %T: %w", handlerFunc.HandlerStr, msg, err)
 		}
 
 		env = env.WithStamp(stamps.HandledStamp{

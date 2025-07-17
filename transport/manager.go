@@ -2,7 +2,7 @@ package transport
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/gerfey/messenger/api"
@@ -105,7 +105,7 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 		})
 
 		if err != nil {
-			_ = fmt.Errorf("receive: %w", err)
+			slog.Error("receive error", "error", err)
 		}
 	}(t)
 }

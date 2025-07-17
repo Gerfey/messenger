@@ -46,7 +46,7 @@ func (c *Connection) connect() error {
 
 	conn, err := amqp.Dial(c.dsn)
 	if err != nil {
-		return fmt.Errorf("failed to dial AMQP: %w", err)
+		return fmt.Errorf("failed to connect to AMQP broker at '%s': %w", c.dsn, err)
 	}
 
 	c.conn = conn

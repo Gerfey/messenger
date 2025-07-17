@@ -35,7 +35,7 @@ func (r *Retry) Retry(ctx context.Context, env api.Envelope) error {
 
 	ch, err := r.conn.Channel()
 	if err != nil {
-		return fmt.Errorf("failed to open channel: %w", err)
+		return fmt.Errorf("failed to create AMQP channel for retry: %w", err)
 	}
 	defer func() {
 		_ = ch.Close()
@@ -43,7 +43,7 @@ func (r *Retry) Retry(ctx context.Context, env api.Envelope) error {
 
 	routingKey := getRoutingKey(env.Message())
 
-	return ch.PublishWithContext(ctx,
+	err = ch.PublishWithContext(ctx,
 		r.cfg.Options.Exchange.Name,
 		routingKey,
 		false,
@@ -53,4 +53,9 @@ func (r *Retry) Retry(ctx context.Context, env api.Envelope) error {
 			ContentType: "application/json",
 			Body:        body,
 		})
+	if err != nil {
+		return fmt.Errorf("failed to retry message to exchange '%s' with routing key '%s': %w", r.cfg.Options.Exchange.Name, routingKey, err)
+	}
+
+	return nil
 }

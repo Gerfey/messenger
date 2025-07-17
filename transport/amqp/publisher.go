@@ -35,7 +35,7 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 
 	ch, err := p.conn.Channel()
 	if err != nil {
-		return fmt.Errorf("failed to open channel: %w", err)
+		return fmt.Errorf("failed to create AMQP channel for publisher: %w", err)
 	}
 	defer func() {
 		_ = ch.Close()
@@ -43,7 +43,7 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 
 	routingKey := getRoutingKey(env.Message())
 
-	return ch.PublishWithContext(ctx,
+	err = ch.PublishWithContext(ctx,
 		p.cfg.Options.Exchange.Name,
 		routingKey,
 		false,
@@ -53,4 +53,9 @@ func (p *Publisher) Publish(ctx context.Context, env api.Envelope) error {
 			ContentType: "application/json",
 			Body:        body,
 		})
+	if err != nil {
+		return fmt.Errorf("failed to publish message to exchange '%s' with routing key '%s': %w", p.cfg.Options.Exchange.Name, routingKey, err)
+	}
+
+	return nil
 }

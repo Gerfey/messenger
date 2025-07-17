@@ -92,7 +92,7 @@ func (b *Builder) Build() (api.Messenger, error) {
 	for msgTypeStr, transportName := range b.cfg.Routing {
 		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
 		if err != nil {
-			return nil, fmt.Errorf("unknown message type in routing: %s", msgTypeStr)
+			return nil, fmt.Errorf("failed to resolve message type '%s' in routing configuration: %w", msgTypeStr, err)
 		}
 		router.RouteTypeTo(t, transportName)
 	}
@@ -152,7 +152,7 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 
 		activeBus, ok := b.busLocator.Get(busName)
 		if !ok {
-			return fmt.Errorf("bus %q not found", busName)
+			return fmt.Errorf("bus '%s' not found for message type %T", busName, env.Message())
 		}
 
 		_, err := activeBus.Dispatch(ctx, env)
@@ -164,14 +164,14 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 	for name, tCfg := range b.cfg.Transports {
 		tr, err := b.transportFactory.CreateTransport(name, tCfg)
 		if err != nil {
-			return nil, fmt.Errorf("create transport %q: %w", name, err)
+			return nil, fmt.Errorf("failed to create transport '%s': %w", name, err)
 		}
 
 		manager.AddTransport(tr)
 
 		errTransportLocator := b.transportLocator.Register(name, tr)
 		if errTransportLocator != nil {
-			return nil, fmt.Errorf("register transport %q: %w", name, errTransportLocator)
+			return nil, fmt.Errorf("failed to register transport '%s': %w", name, errTransportLocator)
 		}
 	}
 

@@ -26,7 +26,7 @@ func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serialize
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
 	ch, err := c.conn.Channel()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create AMQP channel for consumer: %w", err)
 	}
 	defer func() {
 		_ = ch.Close()
@@ -62,7 +62,7 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 			nil,
 		)
 		if err != nil {
-			return fmt.Errorf("consume from queue %s failed: %w", queueName, err)
+			return fmt.Errorf("failed to start consuming from queue '%s': %w", queueName, err)
 		}
 
 		go func(queue string, messages <-chan amqp.Delivery) {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -75,11 +76,11 @@ func LoadConfig(path string, processors ...ConfigProcessor) (*MessengerConfig, e
 
 	content, err := reader.Read(path, allProcessors...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file '%s': %w", path, err)
 	}
 
 	if err := parser.Parse(content, &cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse config file '%s': %w", path, err)
 	}
 
 	return &cfg, nil

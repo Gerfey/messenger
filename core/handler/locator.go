@@ -25,26 +25,26 @@ func (r *Locator) Register(handler any) error {
 
 	method, ok := t.MethodByName("Handle")
 	if !ok {
-		return fmt.Errorf("no Handle method found")
+		return fmt.Errorf("handler %T does not have a Handle method", handler)
 	}
 
 	if method.Type.NumIn() != 3 {
-		return fmt.Errorf("handle must accept (context.Context, Message)")
+		return fmt.Errorf("handler %T: Handle method must accept exactly 2 parameters (context.Context, Message), got %d", handler, method.Type.NumIn()-1)
 	}
 
 	ctxType := method.Type.In(1)
 	msgType := method.Type.In(2)
 
 	if !ctxType.Implements(reflect.TypeOf((*context.Context)(nil)).Elem()) {
-		return fmt.Errorf("first argument must be context.Context")
+		return fmt.Errorf("handler %T: first parameter must be context.Context, got %v", handler, ctxType)
 	}
 
 	errorInterface := reflect.TypeOf((*error)(nil)).Elem()
 	if method.Type.NumOut() != 1 && method.Type.NumOut() != 2 {
-		return fmt.Errorf("handle must return error or (result, error)")
+		return fmt.Errorf("handler %T: Handle method must return error or (result, error), got %d return values", handler, method.Type.NumOut())
 	}
 	if !method.Type.Out(method.Type.NumOut() - 1).Implements(errorInterface) {
-		return fmt.Errorf("last return value must be error")
+		return fmt.Errorf("handler %T: last return value must be error, got %v", handler, method.Type.Out(method.Type.NumOut()-1))
 	}
 
 	busName := ""

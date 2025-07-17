@@ -37,7 +37,7 @@ func (m *Messenger) Run(ctx context.Context) error {
 func (m *Messenger) GetDefaultBus() (api.MessageBus, error) {
 	bus, ok := m.busLocator.Get(m.defaultBusName)
 	if !ok {
-		return nil, fmt.Errorf("bus not found")
+		return nil, fmt.Errorf("default bus '%s' not found", m.defaultBusName)
 	}
 
 	return bus, nil
@@ -46,7 +46,7 @@ func (m *Messenger) GetDefaultBus() (api.MessageBus, error) {
 func (m *Messenger) GetBusWith(name string) (api.MessageBus, error) {
 	bus, ok := m.busLocator.Get(name)
 	if !ok {
-		return nil, fmt.Errorf("bus not found")
+		return nil, fmt.Errorf("bus '%s' not found", name)
 	}
 
 	return bus, nil
