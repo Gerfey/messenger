@@ -32,12 +32,10 @@ type RetryStrategyConfig struct {
 }
 
 type OptionsConfig struct {
-	AutoSetup          bool             `yaml:"auto_setup" default:"true"`
-	ConsumerPoolSize   int              `yaml:"consumer_pool_size" default:"10"`
-	ChannelPoolEnabled bool             `yaml:"channel_pool_enabled" default:"true"`
-	ChannelPoolSize    int              `yaml:"channel_pool_size" default:"10"`
-	Exchange           ExchangeConfig   `yaml:"exchange"`
-	Queues             map[string]Queue `yaml:"queues"`
+	AutoSetup        bool             `yaml:"auto_setup" default:"true"`
+	ConsumerPoolSize int              `yaml:"consumer_pool_size" default:"10"`
+	Exchange         ExchangeConfig   `yaml:"exchange"`
+	Queues           map[string]Queue `yaml:"queues"`
 }
 
 type ExchangeConfig struct {

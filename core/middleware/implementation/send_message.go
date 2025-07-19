@@ -50,9 +50,6 @@ func (m *SendMessageMiddleware) Handle(ctx context.Context, env api.Envelope, ne
 
 	for _, name := range transportNames {
 		sender := m.transportLocator.GetTransport(name)
-		if sender == nil {
-			continue
-		}
 
 		err := sender.Send(ctx, env)
 		if err != nil {
@@ -61,5 +58,5 @@ func (m *SendMessageMiddleware) Handle(ctx context.Context, env api.Envelope, ne
 		env = env.WithStamp(stamps.SentStamp{Transport: name})
 	}
 
-	return next(ctx, env)
+	return env, nil
 }

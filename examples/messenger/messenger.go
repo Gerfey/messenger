@@ -55,7 +55,7 @@ func main() {
 		return
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 
-	//<-ctx.Done()
+	<-ctx.Done()
 }

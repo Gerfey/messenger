@@ -24,11 +24,13 @@ func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serialize
 }
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
-	ch, err := c.conn.GetChannel()
+	ch, err := c.conn.Channel()
 	if err != nil {
-		return fmt.Errorf("failed to get AMQP channel for consumer: %w", err)
+		return fmt.Errorf("failed to create AMQP channel for consumer: %w", err)
 	}
-	defer c.conn.PutChannel(ch)
+	defer func() {
+		_ = ch.Close()
+	}()
 
 	poolSize := c.cfg.Options.ConsumerPoolSize
 	if poolSize <= 0 {

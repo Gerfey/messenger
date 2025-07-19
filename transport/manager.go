@@ -69,14 +69,14 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 				return errMessageReceived
 			}
 
-			errHandler := m.handler(ctx, env)
+			err := m.handler(ctx, env)
 
-			if errHandler != nil {
+			if err != nil {
 				errMessageFailed := m.eventDispatcher.Dispatch(ctx, event.WorkerMessageFailedEvent{
 					Ctx:           ctx,
 					Envelope:      env,
 					TransportName: t.Name(),
-					Error:         errHandler,
+					Error:         err,
 				})
 				if errMessageFailed != nil {
 					return errMessageFailed
@@ -84,7 +84,7 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 
 				errSendFailed := m.eventDispatcher.Dispatch(ctx, event.SendFailedMessageEvent{
 					Envelope:      env,
-					Error:         errHandler,
+					Error:         err,
 					TransportName: t.Name(),
 				})
 				if errSendFailed != nil {
@@ -101,7 +101,7 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 				}
 			}
 
-			return errHandler
+			return err
 		})
 
 		if err != nil {
