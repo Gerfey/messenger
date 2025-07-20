@@ -31,7 +31,7 @@ func (b *Bus) Dispatch(ctx context.Context, msg any, st ...api.Stamp) (api.Envel
 }
 
 func (b *Bus) buildChain() api.NextFunc {
-	handler := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+	handler := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 		return env, nil
 	}
 

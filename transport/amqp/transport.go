@@ -40,9 +40,9 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 	}
 
 	if cfg.Options.AutoSetup {
-		err := transport.setup()
-		if err != nil {
-			return nil, err
+		setupErr := transport.setup()
+		if setupErr != nil {
+			return nil, setupErr
 		}
 	}
 
@@ -101,15 +101,15 @@ func (t *Transport) setup() error {
 		}
 
 		for _, bindingKey := range queueCfg.BindingKeys {
-			err := ch.QueueBind(
+			bindErr := ch.QueueBind(
 				queueName,
 				bindingKey,
 				t.cfg.Options.Exchange.Name,
 				false,
 				nil,
 			)
-			if err != nil {
-				return fmt.Errorf("bind queue: %w", err)
+			if bindErr != nil {
+				return fmt.Errorf("bind queue: %w", bindErr)
 			}
 		}
 	}

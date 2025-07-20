@@ -6,8 +6,12 @@ import (
 	"time"
 )
 
+const (
+	defaultProcessorsCount = 2
+)
+
 type MessengerConfig struct {
-	DefaultBus       string                     `yaml:"default_bus" default:"default"`
+	DefaultBus       string                     `yaml:"default_bus"       default:"default"`
 	FailureTransport string                     `yaml:"failure_transport"`
 	Buses            map[string]BusConfig       `yaml:"buses"`
 	Transports       map[string]TransportConfig `yaml:"transports"`
@@ -32,7 +36,7 @@ type RetryStrategyConfig struct {
 }
 
 type OptionsConfig struct {
-	AutoSetup        bool             `yaml:"auto_setup" default:"true"`
+	AutoSetup        bool             `yaml:"auto_setup"         default:"true"`
 	ConsumerPoolSize int              `yaml:"consumer_pool_size" default:"10"`
 	Exchange         ExchangeConfig   `yaml:"exchange"`
 	Queues           map[string]Queue `yaml:"queues"`
@@ -40,17 +44,17 @@ type OptionsConfig struct {
 
 type ExchangeConfig struct {
 	Name       string `yaml:"name"`
-	Type       string `yaml:"type" default:"topic"` // topic, direct, fanout
-	Durable    bool   `yaml:"durable" default:"true"`
+	Type       string `yaml:"type"        default:"topic"` // topic, direct, fanout
+	Durable    bool   `yaml:"durable"     default:"true"`
 	AutoDelete bool   `yaml:"auto_delete" default:"false"`
-	Internal   bool   `yaml:"internal" default:"false"`
+	Internal   bool   `yaml:"internal"    default:"false"`
 }
 
 type Queue struct {
 	BindingKeys []string `yaml:"binding_keys"`
-	Durable     bool     `yaml:"durable" default:"true"`
-	Exclusive   bool     `yaml:"exclusive" default:"false"`
-	AutoDelete  bool     `yaml:"auto_delete" default:"false"`
+	Durable     bool     `yaml:"durable"      default:"true"`
+	Exclusive   bool     `yaml:"exclusive"    default:"false"`
+	AutoDelete  bool     `yaml:"auto_delete"  default:"false"`
 }
 
 type SerializedEnvelope struct {
@@ -64,13 +68,13 @@ type SerializedStamp struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func LoadConfig(path string, processors ...ConfigProcessor) (*MessengerConfig, error) {
+func LoadConfig(path string, processors ...Processor) (*MessengerConfig, error) {
 	var cfg MessengerConfig
 
-	reader := &FileConfigReader{}
+	reader := &FileReader{}
 	parser := &YAMLParser{}
 
-	allProcessors := make([]ConfigProcessor, 0, len(processors)+2)
+	allProcessors := make([]Processor, 0, len(processors)+defaultProcessorsCount)
 	allProcessors = append(allProcessors, &EnvVarProcessor{})
 	allProcessors = append(allProcessors, processors...)
 
@@ -79,8 +83,8 @@ func LoadConfig(path string, processors ...ConfigProcessor) (*MessengerConfig, e
 		return nil, fmt.Errorf("failed to read config file '%s': %w", path, err)
 	}
 
-	if err := parser.Parse(content, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config file '%s': %w", path, err)
+	if parseErr := parser.Parse(content, &cfg); parseErr != nil {
+		return nil, fmt.Errorf("failed to parse config file '%s': %w", path, parseErr)
 	}
 
 	return &cfg, nil

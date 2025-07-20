@@ -7,6 +7,10 @@ import (
 	"github.com/gerfey/messenger/core/stamps"
 )
 
+const (
+	defaultDelayMs = 5000
+)
+
 type exampleHelloMessage struct {
 	Text string
 }
@@ -16,9 +20,11 @@ func main() {
 
 	env := envelope.NewEnvelope(msg).
 		WithStamp(stamps.BusNameStamp{Name: "default"}).
-		WithStamp(stamps.DelayStamp{Milliseconds: 5000})
+		WithStamp(stamps.DelayStamp{Milliseconds: defaultDelayMs})
 
-	fmt.Println("Message:", env.Message().(exampleHelloMessage).Text)
+	if message, ok := env.Message().(exampleHelloMessage); ok {
+		fmt.Println("Message:", message.Text)
+	}
 
 	busName, _ := envelope.LastStampOf[stamps.BusNameStamp](env)
 	fmt.Println("BusName:", busName.Name)

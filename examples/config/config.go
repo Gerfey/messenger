@@ -1,16 +1,21 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/gerfey/messenger/config"
 )
 
 func main() {
+	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	cfg, err := config.LoadConfig("examples/config/messenger.yaml")
 	if err != nil {
-		log.Fatal(err)
+		logger.ErrorContext(ctx, "Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("Default bus:", cfg.DefaultBus)

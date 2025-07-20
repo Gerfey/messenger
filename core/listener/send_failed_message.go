@@ -2,7 +2,7 @@ package listener
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gerfey/messenger/api"
@@ -15,18 +15,21 @@ import (
 type SendFailedMessageForRetryListener struct {
 	transport        api.RetryableTransport
 	failureTransport api.Transport
-	retryStrategy    retry.RetryStrategy
+	retryStrategy    retry.Strategy
+	logger           *slog.Logger
 }
 
 func NewSendFailedMessageForRetryListener(
 	transport api.RetryableTransport,
 	failureTransport api.Transport,
-	strategy retry.RetryStrategy,
+	strategy retry.Strategy,
+	logger *slog.Logger,
 ) *SendFailedMessageForRetryListener {
 	return &SendFailedMessageForRetryListener{
 		transport:        transport,
 		failureTransport: failureTransport,
 		retryStrategy:    strategy,
+		logger:           logger,
 	}
 }
 
@@ -42,7 +45,7 @@ func (l *SendFailedMessageForRetryListener) Handle(ctx context.Context, evt even
 		return
 	}
 
-	var nextRetry uint = 0
+	var nextRetry uint
 	retryStamp, ok := envelope.LastStampOf[stamps.RedeliveryStamp](env)
 	if ok {
 		nextRetry = retryStamp.RetryCount + 1
@@ -55,12 +58,12 @@ func (l *SendFailedMessageForRetryListener) Handle(ctx context.Context, evt even
 	}
 	env = env.WithStamp(errorStamp)
 
-	delay, shouldRetry := l.retryStrategy.ShouldRetry(nextRetry, evt.Error)
+	delay, shouldRetry := l.retryStrategy.ShouldRetry(nextRetry)
 	if !shouldRetry {
 		if l.failureTransport != nil {
 			err := l.failureTransport.Send(ctx, env)
 			if err != nil {
-				fmt.Printf("failed to send message to failure transport: %v\n", err)
+				l.logger.ErrorContext(ctx, "failed to send message to failure transport", "error", err)
 			}
 		}
 
@@ -72,7 +75,7 @@ func (l *SendFailedMessageForRetryListener) Handle(ctx context.Context, evt even
 	time.AfterFunc(delay, func() {
 		err := l.transport.Retry(ctx, newEnv)
 		if err != nil {
-			fmt.Printf("retry dispatch failed: %v\n", err)
+			l.logger.ErrorContext(ctx, "retry dispatch failed", "error", err)
 		}
 	})
 }

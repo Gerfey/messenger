@@ -7,7 +7,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-type ConfigParser interface {
+type Parser interface {
 	Parse(content []byte, cfg any) error
 }
 

@@ -4,17 +4,17 @@ import (
 	"os"
 )
 
-type ConfigProcessor interface {
+type Processor interface {
 	Process(content []byte) ([]byte, error)
 }
 
-type ConfigReader interface {
-	Read(path string, processors ...ConfigProcessor) ([]byte, error)
+type Reader interface {
+	Read(path string, processors ...Processor) ([]byte, error)
 }
 
-type FileConfigReader struct{}
+type FileReader struct{}
 
-func (r *FileConfigReader) Read(path string, processors ...ConfigProcessor) ([]byte, error) {
+func (r *FileReader) Read(path string, processors ...Processor) ([]byte, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

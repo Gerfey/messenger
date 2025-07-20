@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	amqp "github.com/rabbitmq/amqp091-go"
+
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/core/stamps"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Consumer struct {
@@ -32,26 +33,41 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 		_ = ch.Close()
 	}()
 
+	jobs := make(chan job)
+	c.startWorkerPool(ctx, jobs, handler)
+
+	err = c.startQueueConsumers(ctx, ch, jobs)
+	if err != nil {
+		return err
+	}
+
+	<-ctx.Done()
+
+	return ctx.Err()
+}
+
+func (c *Consumer) startWorkerPool(
+	ctx context.Context,
+	jobs chan job,
+	handler func(context.Context, api.Envelope) error,
+) {
 	poolSize := c.cfg.Options.ConsumerPoolSize
 	if poolSize <= 0 {
 		poolSize = 10
 	}
 
-	type job struct {
-		d amqp.Delivery
-	}
-	jobs := make(chan job)
-
-	for i := 0; i < poolSize; i++ {
+	for range poolSize {
 		go func() {
 			for j := range jobs {
 				c.handleDelivery(ctx, j.d, handler)
 			}
 		}()
 	}
+}
 
+func (c *Consumer) startQueueConsumers(ctx context.Context, ch *amqp.Channel, jobs chan job) error {
 	for queueName := range c.cfg.Options.Queues {
-		msgs, err := ch.ConsumeWithContext(
+		msgs, consumeErr := ch.ConsumeWithContext(
 			ctx,
 			queueName,
 			"",
@@ -61,33 +77,37 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 			false,
 			nil,
 		)
-		if err != nil {
-			return fmt.Errorf("failed to start consuming from queue '%s': %w", queueName, err)
+		if consumeErr != nil {
+			return fmt.Errorf("failed to start consuming from queue '%s': %w", queueName, consumeErr)
 		}
 
-		go func(queue string, messages <-chan amqp.Delivery) {
-			for {
-				select {
-				case <-ctx.Done():
-					close(jobs)
-
-					return
-				case d, ok := <-messages:
-					if !ok {
-						return
-					}
-					jobs <- job{d: d}
-				}
-			}
-		}(queueName, msgs)
+		go c.processQueueMessages(ctx, jobs, msgs)
 	}
 
-	<-ctx.Done()
-
-	return ctx.Err()
+	return nil
 }
 
-func (c *Consumer) handleDelivery(ctx context.Context, d amqp.Delivery, handler func(context.Context, api.Envelope) error) {
+func (c *Consumer) processQueueMessages(ctx context.Context, jobs chan job, messages <-chan amqp.Delivery) {
+	for {
+		select {
+		case <-ctx.Done():
+			close(jobs)
+
+			return
+		case d, ok := <-messages:
+			if !ok {
+				return
+			}
+			jobs <- job{d: d}
+		}
+	}
+}
+
+func (c *Consumer) handleDelivery(
+	ctx context.Context,
+	d amqp.Delivery,
+	handler func(context.Context, api.Envelope) error,
+) {
 	headersMap := map[string]string{}
 	for k, v := range d.Headers {
 		if s, ok := v.(string); ok {
@@ -114,4 +134,8 @@ func (c *Consumer) handleDelivery(ctx context.Context, d amqp.Delivery, handler 
 	}
 
 	_ = d.Ack(false)
+}
+
+type job struct {
+	d amqp.Delivery
 }

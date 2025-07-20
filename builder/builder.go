@@ -3,6 +3,7 @@ package builder
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
 
 	"github.com/gerfey/messenger"
@@ -31,9 +32,10 @@ type Builder struct {
 	middlewareLocator api.MiddlewareLocator
 	busLocator        api.BusLocator
 	eventDispatcher   api.EventDispatcher
+	logger            *slog.Logger
 }
 
-func NewBuilder(cfg *config.MessengerConfig) api.Builder {
+func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 	resolver := NewStaticTypeResolver()
 
 	tf := transport.NewFactoryChain(
@@ -50,6 +52,7 @@ func NewBuilder(cfg *config.MessengerConfig) api.Builder {
 		middlewareLocator: middleware.NewMiddlewareLocator(),
 		busLocator:        bus.NewLocator(),
 		eventDispatcher:   event.NewEventDispatcher(),
+		logger:            logger,
 	}
 }
 
@@ -156,6 +159,7 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 		}
 
 		_, err := activeBus.Dispatch(ctx, env)
+
 		return err
 	}
 
@@ -191,7 +195,7 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 				failureTransport = b.transportLocator.GetTransport(b.cfg.FailureTransport)
 			}
 
-			lst := listener.NewSendFailedMessageForRetryListener(retryable, failureTransport, strategy)
+			lst := listener.NewSendFailedMessageForRetryListener(retryable, failureTransport, strategy, b.logger)
 			b.eventDispatcher.AddListener(event.SendFailedMessageEvent{}, lst)
 		}
 	}

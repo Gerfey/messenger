@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-type RetryStrategy interface {
-	ShouldRetry(attempt uint, err error) (time.Duration, bool)
+type Strategy interface {
+	ShouldRetry(attempt uint) (time.Duration, bool)
 }
 type MultiplierRetryStrategy struct {
 	MaxRetries uint
@@ -15,7 +15,12 @@ type MultiplierRetryStrategy struct {
 	MaxDelay   time.Duration
 }
 
-func NewMultiplierRetryStrategy(maxRetries uint, delay time.Duration, multiplier float64, maxDelay time.Duration) RetryStrategy {
+func NewMultiplierRetryStrategy(
+	maxRetries uint,
+	delay time.Duration,
+	multiplier float64,
+	maxDelay time.Duration,
+) Strategy {
 	return &MultiplierRetryStrategy{
 		MaxRetries: maxRetries,
 		Delay:      delay,
@@ -24,7 +29,7 @@ func NewMultiplierRetryStrategy(maxRetries uint, delay time.Duration, multiplier
 	}
 }
 
-func (s *MultiplierRetryStrategy) ShouldRetry(retryCount uint, err error) (time.Duration, bool) {
+func (s *MultiplierRetryStrategy) ShouldRetry(retryCount uint) (time.Duration, bool) {
 	if retryCount >= s.MaxRetries {
 		return 0, false
 	}

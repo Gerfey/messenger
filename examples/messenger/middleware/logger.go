@@ -17,8 +17,12 @@ func NewExampleLoggerMiddleware(log *slog.Logger) *ExampleLoggerMiddleware {
 	}
 }
 
-func (l *ExampleLoggerMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	l.logger.Info("message", "message", env.Message())
+func (l *ExampleLoggerMiddleware) Handle(
+	ctx context.Context,
+	env api.Envelope,
+	next api.NextFunc,
+) (api.Envelope, error) {
+	l.logger.InfoContext(ctx, "message", "message", env.Message())
 
 	return next(ctx, env)
 }

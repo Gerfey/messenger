@@ -15,7 +15,12 @@ type Messenger struct {
 	routing          api.Router
 }
 
-func NewMessenger(defaultBusName string, manager *transport.Manager, busLocator api.BusLocator, routing api.Router) api.Messenger {
+func NewMessenger(
+	defaultBusName string,
+	manager *transport.Manager,
+	busLocator api.BusLocator,
+	routing api.Router,
+) api.Messenger {
 	return &Messenger{
 		defaultBusName:   defaultBusName,
 		busLocator:       busLocator,

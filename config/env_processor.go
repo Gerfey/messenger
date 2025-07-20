@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+const (
+	expectedMatchParts = 2
+)
+
 type EnvVarProcessor struct{}
 
 func (p *EnvVarProcessor) Process(content []byte) ([]byte, error) {
@@ -14,7 +18,7 @@ func (p *EnvVarProcessor) Process(content []byte) ([]byte, error) {
 	matches := re.FindAllStringSubmatch(contentStr, -1)
 
 	for _, match := range matches {
-		if len(match) == 2 {
+		if len(match) == expectedMatchParts {
 			envName := match[1]
 			envValue := os.Getenv(envName)
 			contentStr = strings.ReplaceAll(contentStr, match[0], envValue)

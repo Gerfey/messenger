@@ -13,6 +13,10 @@ import (
 	"github.com/gerfey/messenger/examples/retry_messenger/message"
 )
 
+const (
+	waitDurationSeconds = 20
+)
+
 func main() {
 	ctx := context.Background()
 
@@ -21,10 +25,11 @@ func main() {
 	cfg, err := config.LoadConfig("./examples/retry_messenger/messenger.yaml")
 	if err != nil {
 		log.Error("ERROR load config", "error", err)
+
 		return
 	}
 
-	b := builder.NewBuilder(cfg)
+	b := builder.NewBuilder(cfg, log)
 
 	_ = b.RegisterHandler(&handler.ExampleHelloErrorHandler{})
 
@@ -33,18 +38,22 @@ func main() {
 	messenger, err := b.Build()
 	if err != nil {
 		log.Error("failed to build messenger", "error", err)
+
 		return
 	}
 
 	go func() {
-		if err := messenger.Run(ctx); err != nil {
-			log.Error("messenger run failed", "error", err)
+		if runErr := messenger.Run(ctx); runErr != nil {
+			log.Error("messenger run failed", "error", runErr)
+
+			return
 		}
 	}()
 
 	messengerBus, err := messenger.GetDefaultBus()
 	if err != nil {
 		log.Error("failed to get default bus", "error", err)
+
 		return
 	}
 
@@ -53,10 +62,11 @@ func main() {
 	})
 	if err != nil {
 		log.Error("failed to dispatch message", "error", err)
+
 		return
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(waitDurationSeconds * time.Second)
 
 	<-ctx.Done()
 }

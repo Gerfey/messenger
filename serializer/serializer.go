@@ -2,7 +2,7 @@ package serializer
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
@@ -22,7 +22,7 @@ func (s *Serializer) Marshal(env api.Envelope) ([]byte, map[string]string, error
 	msg := env.Message()
 	body, err := json.Marshal(msg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("marshal body: %w", err)
+		return nil, nil, err
 	}
 
 	headers := map[string]string{
@@ -33,9 +33,9 @@ func (s *Serializer) Marshal(env api.Envelope) ([]byte, map[string]string, error
 	if len(stamps) > 0 {
 		var serializedStamps []config.SerializedStamp
 		for _, stamp := range stamps {
-			data, err := json.Marshal(stamp)
-			if err != nil {
-				return nil, nil, fmt.Errorf("marshal stamp: %w", err)
+			data, marshalErr := json.Marshal(stamp)
+			if marshalErr != nil {
+				return nil, nil, marshalErr
 			}
 
 			serializedStamps = append(serializedStamps, config.SerializedStamp{
@@ -44,9 +44,9 @@ func (s *Serializer) Marshal(env api.Envelope) ([]byte, map[string]string, error
 			})
 		}
 
-		stampsJSON, err := json.Marshal(serializedStamps)
-		if err != nil {
-			return nil, nil, fmt.Errorf("marshal stamps: %w", err)
+		stampsJSON, stampsErr := json.Marshal(serializedStamps)
+		if stampsErr != nil {
+			return nil, nil, stampsErr
 		}
 
 		headers["stamps"] = string(stampsJSON)
@@ -58,7 +58,7 @@ func (s *Serializer) Marshal(env api.Envelope) ([]byte, map[string]string, error
 func (s *Serializer) Unmarshal(body []byte, headers map[string]string) (api.Envelope, error) {
 	typeName, ok := headers["type"]
 	if !ok {
-		return nil, fmt.Errorf("missing 'type' header")
+		return nil, errors.New("missing 'type' header")
 	}
 
 	msgType, err := s.resolver.ResolveMessageType(typeName)
@@ -67,41 +67,67 @@ func (s *Serializer) Unmarshal(body []byte, headers map[string]string) (api.Enve
 	}
 
 	msgPtr := reflect.New(msgType.Elem()).Interface()
-	if err := json.Unmarshal(body, msgPtr); err != nil {
-		return nil, fmt.Errorf("unmarshal message body: %w", err)
+	if unmarshalErr := json.Unmarshal(body, msgPtr); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 
 	env := envelope.NewEnvelope(msgPtr)
 
-	if rawStamps, ok := headers["stamps"]; ok {
-		var sStamps []config.SerializedStamp
-		if err := json.Unmarshal([]byte(rawStamps), &sStamps); err != nil {
-			return nil, fmt.Errorf("unmarshal stamps array: %w", err)
-		}
-
-		for _, sStamp := range sStamps {
-			t, err := s.resolver.ResolveStampType(sStamp.Type)
-			if err != nil {
-				continue
-			}
-
-			var stampValue any
-			if t.Kind() == reflect.Ptr {
-				stampValue = reflect.New(t.Elem()).Interface()
-				if err := json.Unmarshal(sStamp.Data, stampValue); err != nil {
-					continue
-				}
-			} else {
-				ptrValue := reflect.New(t)
-				if err := json.Unmarshal(sStamp.Data, ptrValue.Interface()); err != nil {
-					continue
-				}
-				stampValue = ptrValue.Elem().Interface()
-			}
-
-			env = env.WithStamp(stampValue.(api.Stamp))
-		}
+	if rawStamps, stampsOk := headers["stamps"]; stampsOk {
+		env = s.processStamps(env, rawStamps)
 	}
 
 	return env, nil
+}
+
+func (s *Serializer) processStamps(env api.Envelope, rawStamps string) api.Envelope {
+	var sStamps []config.SerializedStamp
+	if stampsUnmarshalErr := json.Unmarshal([]byte(rawStamps), &sStamps); stampsUnmarshalErr != nil {
+		return env
+	}
+
+	for _, sStamp := range sStamps {
+		if stamp := s.deserializeStamp(sStamp); stamp != nil {
+			env = env.WithStamp(stamp)
+		}
+	}
+
+	return env
+}
+
+func (s *Serializer) deserializeStamp(sStamp config.SerializedStamp) api.Stamp {
+	t, resolveErr := s.resolver.ResolveStampType(sStamp.Type)
+	if resolveErr != nil {
+		return nil
+	}
+
+	stampValue := s.createStampValue(t, sStamp.Data)
+	if stampValue == nil {
+		return nil
+	}
+
+	if stamp, stampOk := stampValue.(api.Stamp); stampOk {
+		return stamp
+	}
+
+	return nil
+}
+
+func (s *Serializer) createStampValue(t reflect.Type, data []byte) any {
+	var stampValue any
+
+	if t.Kind() == reflect.Ptr {
+		stampValue = reflect.New(t.Elem()).Interface()
+		if unmarshalErr := json.Unmarshal(data, stampValue); unmarshalErr != nil {
+			return nil
+		}
+	} else {
+		ptrValue := reflect.New(t)
+		if unmarshalErr := json.Unmarshal(data, ptrValue.Interface()); unmarshalErr != nil {
+			return nil
+		}
+		stampValue = ptrValue.Elem().Interface()
+	}
+
+	return stampValue
 }

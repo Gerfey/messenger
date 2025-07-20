@@ -24,7 +24,7 @@ func (t *Transport) Name() string {
 	return t.cfg.Name
 }
 
-func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
+func (t *Transport) Send(_ context.Context, env api.Envelope) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 

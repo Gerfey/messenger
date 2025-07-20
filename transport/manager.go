@@ -54,6 +54,24 @@ func (m *Manager) Start(ctx context.Context, consumeOnly []string) {
 	}
 }
 
+func (m *Manager) Stop() {
+	m.mu.Lock()
+	m.running = false
+	m.mu.Unlock()
+
+	m.wg.Wait()
+}
+
+func (m *Manager) HasTransport(name string) bool {
+	for _, transport := range m.transports {
+		if transport.Name() == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 	m.wg.Add(1)
 	go func(t api.Transport) {
@@ -110,19 +128,12 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 	}(t)
 }
 
-func (m *Manager) Stop() {
-	m.mu.Lock()
-	m.running = false
-	m.mu.Unlock()
-
-	m.wg.Wait()
-}
-
 func (m *Manager) stringInSlice(s string, list []string) bool {
 	for _, item := range list {
 		if item == s {
 			return true
 		}
 	}
+
 	return false
 }

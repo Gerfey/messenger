@@ -10,6 +10,10 @@ import (
 	"github.com/gerfey/messenger/core/stamps"
 )
 
+const (
+	expectedResultsWithError = 2
+)
+
 type HandleMessageMiddleware struct {
 	handlersLocator api.HandlerLocator
 }
@@ -20,7 +24,11 @@ func NewHandleMessageMiddleware(handlersLocator api.HandlerLocator) api.Middlewa
 	}
 }
 
-func (h *HandleMessageMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
+func (h *HandleMessageMiddleware) Handle(
+	ctx context.Context,
+	env api.Envelope,
+	next api.NextFunc,
+) (api.Envelope, error) {
 	if _, ok := envelope.LastStampOf[stamps.SentStamp](env); ok {
 		return env, nil
 	}
@@ -45,7 +53,7 @@ func (h *HandleMessageMiddleware) Handle(ctx context.Context, env api.Envelope, 
 			} else {
 				result = results[0].Interface()
 			}
-		} else if len(results) == 2 {
+		} else if len(results) == expectedResultsWithError {
 			result = results[0].Interface()
 			if e, ok := results[1].Interface().(error); ok {
 				err = e

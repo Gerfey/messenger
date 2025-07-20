@@ -19,6 +19,7 @@ func NewConnection(dsn string) (*Connection, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return conn, nil
 }
 

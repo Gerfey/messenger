@@ -11,32 +11,41 @@ func StampsOf[T api.Stamp](e api.Envelope) []T {
 			filtered = append(filtered, stamp)
 		}
 	}
+
 	return filtered
 }
 
-func LastStampOf[T api.Stamp](e api.Envelope) (T, bool) {
-	stamps := StampsOf[T](e)
-	if len(stamps) > 0 {
-		return stamps[len(stamps)-1], true
-	}
+func FirstStampOf[T api.Stamp](e api.Envelope) (T, bool) {
 	var zero T
+	stamps := e.Stamps()
+	for _, stamp := range stamps {
+		if s, ok := stamp.(T); ok {
+			return s, true
+		}
+	}
+
 	return zero, false
 }
 
-func FirstStampOf[T api.Stamp](e api.Envelope) (T, bool) {
-	stamps := StampsOf[T](e)
-	if len(stamps) > 0 {
-		return stamps[0], true
-	}
+func LastStampOf[T api.Stamp](e api.Envelope) (T, bool) {
 	var zero T
+	stamps := e.Stamps()
+	for i := len(stamps) - 1; i >= 0; i-- {
+		if s, ok := stamps[i].(T); ok {
+			return s, true
+		}
+	}
+
 	return zero, false
 }
 
 func HasStampOf[T api.Stamp](e api.Envelope) bool {
-	for _, s := range e.Stamps() {
-		if _, ok := s.(T); ok {
+	stamps := e.Stamps()
+	for _, stamp := range stamps {
+		if _, ok := stamp.(T); ok {
 			return true
 		}
 	}
+
 	return false
 }

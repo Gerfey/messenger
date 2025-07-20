@@ -38,6 +38,7 @@ func (r *Resolver) ResolveMessageType(name string) (reflect.Type, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown message type: %s", name)
 	}
+
 	return t, nil
 }
 
@@ -46,5 +47,6 @@ func (r *Resolver) ResolveStampType(name string) (reflect.Type, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown stamp type: %s", name)
 	}
+
 	return t, nil
 }

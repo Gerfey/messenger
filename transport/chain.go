@@ -21,6 +21,7 @@ func (c *FactoryChain) CreateTransport(name string, config config.TransportConfi
 			return factory.Create(name, config.DSN, config.Options)
 		}
 	}
+
 	return nil, fmt.Errorf("no transport factory supports DSN '%s' for transport '%s'", config.DSN, name)
 }
 
