@@ -13,15 +13,21 @@ type Manager struct {
 	transports      []api.Transport
 	handler         func(context.Context, api.Envelope) error
 	eventDispatcher api.EventDispatcher
+	logger          *slog.Logger
 	wg              sync.WaitGroup
 	mu              sync.Mutex
 	running         bool
 }
 
-func NewManager(handler func(context.Context, api.Envelope) error, eventDispatcher api.EventDispatcher) *Manager {
+func NewManager(
+	handler func(context.Context, api.Envelope) error,
+	eventDispatcher api.EventDispatcher,
+	logger *slog.Logger,
+) *Manager {
 	return &Manager{
 		handler:         handler,
 		eventDispatcher: eventDispatcher,
+		logger:          logger,
 	}
 }
 
@@ -123,7 +129,7 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 		})
 
 		if err != nil {
-			slog.Error("receive error", "error", err)
+			m.logger.Error("receive error", "error", err)
 		}
 	}(t)
 }

@@ -39,8 +39,8 @@ func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 	resolver := NewStaticTypeResolver()
 
 	tf := transport.NewFactoryChain(
-		amqp.NewTransportFactory(resolver),
-		inmemory.NewTransportFactory(resolver),
+		amqp.NewTransportFactory(resolver, logger),
+		inmemory.NewTransportFactory(resolver, logger),
 	)
 
 	return &Builder{
@@ -51,7 +51,7 @@ func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 		transportLocator:  transport.NewLocator(),
 		middlewareLocator: middleware.NewMiddlewareLocator(),
 		busLocator:        bus.NewLocator(),
-		eventDispatcher:   event.NewEventDispatcher(),
+		eventDispatcher:   event.NewEventDispatcher(logger),
 		logger:            logger,
 	}
 }
@@ -122,8 +122,11 @@ func (b *Builder) setupBuses(router api.Router) error {
 		}
 
 		chain = append(chain, implementation.NewAddBusNameMiddleware(name))
-		chain = append(chain, implementation.NewSendMessageMiddleware(router, b.transportLocator, b.eventDispatcher))
-		chain = append(chain, implementation.NewHandleMessageMiddleware(b.handlersLocator))
+		chain = append(
+			chain,
+			implementation.NewSendMessageMiddleware(router, b.transportLocator, b.eventDispatcher, b.logger),
+		)
+		chain = append(chain, implementation.NewHandleMessageMiddleware(b.handlersLocator, b.logger))
 
 		createNewBus := bus.NewBus(chain...)
 
@@ -163,7 +166,7 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 		return err
 	}
 
-	manager := transport.NewManager(handlerManager, b.eventDispatcher)
+	manager := transport.NewManager(handlerManager, b.eventDispatcher, b.logger)
 
 	for name, tCfg := range b.cfg.Transports {
 		tr, err := b.transportFactory.CreateTransport(name, tCfg)

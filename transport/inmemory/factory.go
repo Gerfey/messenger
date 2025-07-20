@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/gerfey/messenger/api"
@@ -9,10 +10,14 @@ import (
 
 type TransportFactory struct {
 	resolver api.TypeResolver
+	logger   *slog.Logger
 }
 
-func NewTransportFactory(resolver api.TypeResolver) api.TransportFactory {
-	return &TransportFactory{resolver: resolver}
+func NewTransportFactory(resolver api.TypeResolver, logger *slog.Logger) api.TransportFactory {
+	return &TransportFactory{
+		resolver: resolver,
+		logger:   logger,
+	}
 }
 
 func (f *TransportFactory) Supports(dsn string) bool {

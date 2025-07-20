@@ -3,6 +3,7 @@ package amqp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
@@ -16,11 +17,14 @@ type Transport struct {
 	retry      *Retry
 	serializer api.Serializer
 	conn       *Connection
+	logger     *slog.Logger
 }
 
-func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport, error) {
+func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
 	conn, err := NewConnection(cfg.DSN)
 	if err != nil {
+		logger.Error("failed to create AMQP connection", "dsn", cfg.DSN, "error", err)
+
 		return nil, err
 	}
 
@@ -28,22 +32,26 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver) (api.Transport
 
 	pub := NewPublisher(conn, cfg, ser)
 	cons := NewConsumer(conn, cfg, ser)
-	retry := NewRetry(conn, cfg, ser)
+	ret := NewRetry(conn, cfg, ser)
 
 	transport := &Transport{
 		cfg:        cfg,
-		serializer: ser,
 		publisher:  pub,
 		consumer:   cons,
+		retry:      ret,
+		serializer: ser,
 		conn:       conn,
-		retry:      retry,
+		logger:     logger,
 	}
 
 	if cfg.Options.AutoSetup {
-		setupErr := transport.setup()
-		if setupErr != nil {
+		if setupErr := transport.setup(); setupErr != nil {
+			logger.Error("failed to setup AMQP transport", "transport", cfg.Name, "error", setupErr)
+
 			return nil, setupErr
 		}
+
+		logger.Info("AMQP transport setup completed", "transport", cfg.Name)
 	}
 
 	return transport, nil
@@ -68,6 +76,8 @@ func (t *Transport) Retry(ctx context.Context, env api.Envelope) error {
 func (t *Transport) setup() error {
 	ch, err := t.conn.Channel()
 	if err != nil {
+		t.logger.Error("failed to open channel", "error", err)
+
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 	defer func() {
@@ -84,6 +94,8 @@ func (t *Transport) setup() error {
 		nil,
 	)
 	if err != nil {
+		t.logger.Error("failed to declare exchange", "exchange", t.cfg.Options.Exchange.Name, "error", err)
+
 		return fmt.Errorf("failed to declare exchange: %w", err)
 	}
 
@@ -97,6 +109,8 @@ func (t *Transport) setup() error {
 			nil,
 		)
 		if err != nil {
+			t.logger.Error("declare queue", "queue", queueName, "error", err)
+
 			return fmt.Errorf("declare queue: %w", err)
 		}
 
@@ -109,6 +123,8 @@ func (t *Transport) setup() error {
 				nil,
 			)
 			if bindErr != nil {
+				t.logger.Error("bind queue", "queue", queueName, "binding_key", bindingKey, "error", bindErr)
+
 				return fmt.Errorf("bind queue: %w", bindErr)
 			}
 		}

@@ -1,5 +1,4 @@
 default_bus: default
-failure_transport: failed_messages
 
 buses:
   default:
@@ -24,16 +23,6 @@ transports:
         test_queue:
           binding_keys:
             - test_routing_key
-
-  failed_messages:
-    dsn: "%env(MESSENGER_AMQP_DSN)%"
-    options:
-      auto_setup: true
-      exchange:
-        name: failed_exchange
-        type: fanout
-      queues:
-        failed_messages_queue: ~
 
 routing:
   message.ExampleHelloMessage: amqp

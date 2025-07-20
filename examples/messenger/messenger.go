@@ -66,6 +66,4 @@ func main() {
 	}
 
 	time.Sleep(waitDurationSeconds * time.Second)
-
-	<-ctx.Done()
 }
