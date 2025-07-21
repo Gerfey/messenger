@@ -15,7 +15,7 @@ type Reader interface {
 type FileReader struct{}
 
 func (r *FileReader) Read(path string, processors ...Processor) ([]byte, error) {
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- path is controlled by application configuration
 	if err != nil {
 		return nil, err
 	}

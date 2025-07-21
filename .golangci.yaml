@@ -146,7 +146,7 @@ linters:
     #- gomodguard # [use more powerful depguard] allow and block lists linter for direct Go module dependencies
     #- gosmopolitan # reports certain i18n/l10n anti-patterns in your Go codebase
     #- grouper # analyzes expression groups
-    #- importas # enforces consistent import aliases
+    #- import-aliases # enforces consistent import aliases
     #- lll # [replaced by golines] reports long lines
     #- maintidx # measures the maintainability index of each function
     #- misspell # [useless] finds commonly misspelled English words in comments
