@@ -83,6 +83,7 @@ func (h *TestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error
 	h.CallCount++
 	return nil
 }
+
 type AnotherTestMessageHandler struct {
 	CallCount int
 }

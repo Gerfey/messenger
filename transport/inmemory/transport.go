@@ -3,8 +3,10 @@ package inmemory
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/gerfey/messenger/api"
+	"github.com/gerfey/messenger/core/stamps"
 )
 
 type Transport struct {
@@ -16,7 +18,7 @@ type Transport struct {
 func NewTransport(cfg TransportConfig) api.Transport {
 	return &Transport{
 		cfg:   cfg,
-		queue: []api.Envelope{},
+		queue: make([]api.Envelope, 0),
 	}
 }
 
@@ -24,7 +26,7 @@ func (t *Transport) Name() string {
 	return t.cfg.Name
 }
 
-func (t *Transport) Send(_ context.Context, env api.Envelope) error {
+func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -35,20 +37,28 @@ func (t *Transport) Send(_ context.Context, env api.Envelope) error {
 
 func (t *Transport) Receive(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
 	for {
-		t.lock.Lock()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			t.lock.Lock()
+			if len(t.queue) == 0 {
+				t.lock.Unlock()
+				
+				time.Sleep(10 * time.Millisecond)
+				
+				continue
+			}
 
-		if len(t.queue) == 0 {
+			env := t.queue[0]
+			t.queue = t.queue[1:]
 			t.lock.Unlock()
 
-			return nil
-		}
+			envWithReceivedStamp := env.WithStamp(stamps.ReceivedStamp{Transport: t.cfg.Name})
 
-		env := t.queue[0]
-		t.queue = t.queue[1:]
-		t.lock.Unlock()
-
-		if err := handler(ctx, env); err != nil {
-			return err
+			if err := handler(ctx, envWithReceivedStamp); err != nil {
+				return err
+			}
 		}
 	}
 }

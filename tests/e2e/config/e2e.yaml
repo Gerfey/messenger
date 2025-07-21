@@ -1,0 +1,13 @@
+default_bus: default
+
+buses:
+  default:
+    middleware:
+      - debug
+
+transports:
+  in-memory:
+    dsn: "in-memory://"
+
+routing:
+  helpers.TestMessage: in-memory
