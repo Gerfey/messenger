@@ -5,7 +5,7 @@ import (
 )
 
 func StampsOf[T api.Stamp](e api.Envelope) []T {
-	var filtered []T
+	filtered := make([]T, 0)
 	for _, s := range e.Stamps() {
 		if stamp, ok := s.(T); ok {
 			filtered = append(filtered, stamp)
