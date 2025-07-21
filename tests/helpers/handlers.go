@@ -74,3 +74,40 @@ type InvalidHandlerTooManyReturns struct{}
 func (h *InvalidHandlerTooManyReturns) Handle(ctx context.Context, msg *TestMessage) (string, int, error) {
 	return "", 0, nil
 }
+
+type TestMessageHandler struct {
+	CallCount int
+}
+
+func (h *TestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error {
+	h.CallCount++
+	return nil
+}
+type AnotherTestMessageHandler struct {
+	CallCount int
+}
+
+func (h *AnotherTestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error {
+	h.CallCount++
+	return nil
+}
+
+type ErrorTestMessageHandler struct {
+	CallCount int
+	Error     error
+}
+
+func (h *ErrorTestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error {
+	h.CallCount++
+	return h.Error
+}
+
+type ResultTestMessageHandler struct {
+	CallCount int
+	Result    any
+}
+
+func (h *ResultTestMessageHandler) Handle(ctx context.Context, msg *TestMessage) (any, error) {
+	h.CallCount++
+	return h.Result, nil
+}
