@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
+	"runtime"
 
 	"github.com/gerfey/messenger/api"
 )
@@ -84,7 +84,7 @@ func (r *Locator) Register(handler any) error {
 }
 
 func (r *Locator) GetAll() []api.HandlerFunc {
-	var all []api.HandlerFunc
+	all := make([]api.HandlerFunc, 0)
 	for _, handlers := range r.handlers {
 		all = append(all, handlers...)
 	}
@@ -95,7 +95,12 @@ func (r *Locator) GetAll() []api.HandlerFunc {
 func (r *Locator) Get(msg any) []api.HandlerFunc {
 	t := reflect.TypeOf(msg)
 
-	return r.handlers[t]
+	handlers, ok := r.handlers[t]
+	if !ok {
+		return []api.HandlerFunc{}
+	}
+
+	return handlers
 }
 
 func (r *Locator) ResolveMessageType(typeStr string) (reflect.Type, error) {
@@ -118,5 +123,28 @@ func (r *Locator) ResolveMessageType(typeStr string) (reflect.Type, error) {
 }
 
 func runtimeFuncName(i any) string {
-	return strconv.Itoa(int(reflect.ValueOf(i).Pointer()))
+	v := reflect.ValueOf(i)
+	var fn reflect.Value
+
+	if v.Kind() == reflect.Func {
+		fn = v
+	} else {
+		method := v.MethodByName("Handle")
+		if !method.IsValid() || method.IsZero() || method.Kind() != reflect.Func {
+			return fmt.Sprintf("%T.Handle (invalid)", i)
+		}
+		fn = method
+	}
+
+	ptr := fn.Pointer()
+	if ptr == 0 {
+		return fmt.Sprintf("%T.Handle (no pointer)", i)
+	}
+
+	rf := runtime.FuncForPC(ptr)
+	if rf != nil {
+		return rf.Name()
+	}
+
+	return fmt.Sprintf("%T.Handle (no symbol)", i)
 }
