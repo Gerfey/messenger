@@ -1,7 +1,8 @@
-package scenarios
+package scenarios_test
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 	"time"
@@ -17,8 +18,6 @@ import (
 )
 
 func TestE2E_HappyPath_SingleHandlerSingleTransport(t *testing.T) {
-	ctx := context.Background()
-
 	logger, fakeHandler := testHelpers.NewFakeLogger()
 
 	cfg, err := config.LoadConfig("../config/e2e.yaml")
@@ -35,8 +34,11 @@ func TestE2E_HappyPath_SingleHandlerSingleTransport(t *testing.T) {
 	messenger, err := b.Build()
 	require.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
 	go func() {
-		if runErr := messenger.Run(ctx); runErr != nil {
+		if runErr := messenger.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			t.Logf("Messenger run error: %v", runErr)
 		}
 	}()
@@ -48,11 +50,11 @@ func TestE2E_HappyPath_SingleHandlerSingleTransport(t *testing.T) {
 	bus, err := messenger.GetDefaultBus()
 	require.NoError(t, err)
 
-	env, err := bus.Dispatch(ctx, testMessage)
+	env, err := bus.Dispatch(t.Context(), testMessage)
 
 	time.Sleep(100 * time.Millisecond)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, env)
 
 	assert.Equal(t, int64(1), testHandler.GetCallCount())
@@ -65,8 +67,6 @@ func TestE2E_HappyPath_SingleHandlerSingleTransport(t *testing.T) {
 }
 
 func TestE2E_HappyPath_MultipleHandlers(t *testing.T) {
-	ctx := context.Background()
-
 	logger, fakeHandler := testHelpers.NewFakeLogger()
 
 	cfg, err := config.LoadConfig("../config/e2e.yaml")
@@ -76,7 +76,7 @@ func TestE2E_HappyPath_MultipleHandlers(t *testing.T) {
 
 	handler1 := handlers.NewE2ETestHandler()
 	handler2 := handlers.NewE2ETestHandler()
-	
+
 	err = b.RegisterHandler(handler1)
 	require.NoError(t, err)
 	err = b.RegisterHandler(handler2)
@@ -87,8 +87,11 @@ func TestE2E_HappyPath_MultipleHandlers(t *testing.T) {
 	messenger, err := b.Build()
 	require.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
 	go func() {
-		if runErr := messenger.Run(ctx); runErr != nil {
+		if runErr := messenger.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			t.Logf("Messenger run error: %v", runErr)
 		}
 	}()
@@ -100,11 +103,11 @@ func TestE2E_HappyPath_MultipleHandlers(t *testing.T) {
 	bus, err := messenger.GetDefaultBus()
 	require.NoError(t, err)
 
-	env, err := bus.Dispatch(ctx, testMessage)
+	env, err := bus.Dispatch(t.Context(), testMessage)
 
 	time.Sleep(100 * time.Millisecond)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, env)
 
 	assert.Equal(t, int64(1), handler1.GetCallCount())
@@ -117,8 +120,6 @@ func TestE2E_HappyPath_MultipleHandlers(t *testing.T) {
 }
 
 func TestE2E_HappyPath_MultipleTransports(t *testing.T) {
-	ctx := context.Background()
-
 	logger, fakeHandler := testHelpers.NewFakeLogger()
 
 	cfg, err := config.LoadConfig("../config/multiple_transports.yaml")
@@ -135,8 +136,11 @@ func TestE2E_HappyPath_MultipleTransports(t *testing.T) {
 	messenger, err := b.Build()
 	require.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
 	go func() {
-		if runErr := messenger.Run(ctx); runErr != nil {
+		if runErr := messenger.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			t.Logf("Messenger run error: %v", runErr)
 		}
 	}()
@@ -148,11 +152,11 @@ func TestE2E_HappyPath_MultipleTransports(t *testing.T) {
 	bus, err := messenger.GetDefaultBus()
 	require.NoError(t, err)
 
-	env, err := bus.Dispatch(ctx, testMessage)
+	env, err := bus.Dispatch(t.Context(), testMessage)
 
 	time.Sleep(100 * time.Millisecond)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, env)
 
 	assert.Equal(t, int64(1), testHandler.GetCallCount())

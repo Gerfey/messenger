@@ -1,7 +1,6 @@
-package scenarios
+package scenarios_test
 
 import (
-	"context"
 	"log/slog"
 	"testing"
 
@@ -15,8 +14,6 @@ import (
 )
 
 func TestE2E_Simple_HandlerOnly(t *testing.T) {
-	ctx := context.Background()
-
 	logger, fakeHandler := testHelpers.NewFakeLogger()
 
 	cfg, err := config.LoadConfig("../config/handler_only.yaml")
@@ -35,11 +32,11 @@ func TestE2E_Simple_HandlerOnly(t *testing.T) {
 
 	bus, err := messenger.GetDefaultBus()
 	require.NoError(t, err)
-	
-	env, err := bus.Dispatch(ctx, &testHelpers.TestMessage{Content: "test"})
+
+	env, err := bus.Dispatch(t.Context(), &testHelpers.TestMessage{Content: "test"})
 	require.NoError(t, err)
 	require.NotNil(t, env)
-	
+
 	require.Equal(t, int64(1), testHandler.GetCallCount())
 	require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
 	require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))

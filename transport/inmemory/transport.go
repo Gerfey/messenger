@@ -9,6 +9,8 @@ import (
 	"github.com/gerfey/messenger/core/stamps"
 )
 
+const sleepDuration = 10 * time.Millisecond
+
 type Transport struct {
 	cfg   TransportConfig
 	queue []api.Envelope
@@ -26,7 +28,7 @@ func (t *Transport) Name() string {
 	return t.cfg.Name
 }
 
-func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
+func (t *Transport) Send(_ context.Context, env api.Envelope) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -44,9 +46,9 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 			t.lock.Lock()
 			if len(t.queue) == 0 {
 				t.lock.Unlock()
-				
-				time.Sleep(10 * time.Millisecond)
-				
+
+				time.Sleep(sleepDuration)
+
 				continue
 			}
 

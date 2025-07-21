@@ -2,29 +2,29 @@ package helpers
 
 import "context"
 
-func TestEventListener(ctx context.Context, msg *TestMessage) error {
+func TestEventListener(_ context.Context, _ *TestMessage) error {
 	return nil
 }
 
-func AnotherTestEventListener(ctx context.Context, msg *ComplexMessage) error {
+func AnotherTestEventListener(_ context.Context, _ *ComplexMessage) error {
 	return nil
 }
 
 type ValidHandler struct{}
 
-func (h *ValidHandler) Handle(ctx context.Context, msg *TestMessage) error {
+func (h *ValidHandler) Handle(_ context.Context, _ *TestMessage) error {
 	return nil
 }
 
 type ValidHandlerWithResult struct{}
 
-func (h *ValidHandlerWithResult) Handle(ctx context.Context, msg *TestMessage) (*TestMessage, error) {
+func (h *ValidHandlerWithResult) Handle(_ context.Context, msg *TestMessage) (*TestMessage, error) {
 	return msg, nil
 }
 
 type ValidHandlerWithBusName struct{}
 
-func (h *ValidHandlerWithBusName) Handle(ctx context.Context, msg *TestMessage) error {
+func (h *ValidHandlerWithBusName) Handle(_ context.Context, _ *TestMessage) error {
 	return nil
 }
 
@@ -34,7 +34,7 @@ func (h *ValidHandlerWithBusName) GetBusName() string {
 
 type AnotherValidHandler struct{}
 
-func (h *AnotherValidHandler) Handle(ctx context.Context, msg *ComplexMessage) error {
+func (h *AnotherValidHandler) Handle(_ context.Context, _ *ComplexMessage) error {
 	return nil
 }
 
@@ -42,36 +42,36 @@ type InvalidHandlerNoMethod struct{}
 
 type InvalidHandlerWrongParams struct{}
 
-func (h *InvalidHandlerWrongParams) Handle(msg *TestMessage) error {
+func (h *InvalidHandlerWrongParams) Handle(_ *TestMessage) error {
 	return nil
 }
 
 type InvalidHandlerWrongFirstParam struct{}
 
-func (h *InvalidHandlerWrongFirstParam) Handle(wrongType string, msg *TestMessage) error {
+func (h *InvalidHandlerWrongFirstParam) Handle(_ string, _ *TestMessage) error {
 	return nil
 }
 
 type InvalidHandlerTooManyParams struct{}
 
-func (h *InvalidHandlerTooManyParams) Handle(ctx context.Context, msg *TestMessage, extra string) error {
+func (h *InvalidHandlerTooManyParams) Handle(_ context.Context, _ *TestMessage, _ string) error {
 	return nil
 }
 
 type InvalidHandlerNoReturn struct{}
 
-func (h *InvalidHandlerNoReturn) Handle(ctx context.Context, msg *TestMessage) {
+func (h *InvalidHandlerNoReturn) Handle(_ context.Context, _ *TestMessage) {
 }
 
 type InvalidHandlerWrongReturn struct{}
 
-func (h *InvalidHandlerWrongReturn) Handle(ctx context.Context, msg *TestMessage) string {
+func (h *InvalidHandlerWrongReturn) Handle(_ context.Context, _ *TestMessage) string {
 	return ""
 }
 
 type InvalidHandlerTooManyReturns struct{}
 
-func (h *InvalidHandlerTooManyReturns) Handle(ctx context.Context, msg *TestMessage) (string, int, error) {
+func (h *InvalidHandlerTooManyReturns) Handle(_ context.Context, _ *TestMessage) (string, int, error) {
 	return "", 0, nil
 }
 
@@ -79,8 +79,9 @@ type TestMessageHandler struct {
 	CallCount int
 }
 
-func (h *TestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error {
+func (h *TestMessageHandler) Handle(_ context.Context, _ *TestMessage) error {
 	h.CallCount++
+
 	return nil
 }
 
@@ -88,8 +89,9 @@ type AnotherTestMessageHandler struct {
 	CallCount int
 }
 
-func (h *AnotherTestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error {
+func (h *AnotherTestMessageHandler) Handle(_ context.Context, _ *TestMessage) error {
 	h.CallCount++
+
 	return nil
 }
 
@@ -98,8 +100,9 @@ type ErrorTestMessageHandler struct {
 	Error     error
 }
 
-func (h *ErrorTestMessageHandler) Handle(ctx context.Context, msg *TestMessage) error {
+func (h *ErrorTestMessageHandler) Handle(_ context.Context, _ *TestMessage) error {
 	h.CallCount++
+
 	return h.Error
 }
 
@@ -108,7 +111,8 @@ type ResultTestMessageHandler struct {
 	Result    any
 }
 
-func (h *ResultTestMessageHandler) Handle(ctx context.Context, msg *TestMessage) (any, error) {
+func (h *ResultTestMessageHandler) Handle(_ context.Context, _ *TestMessage) (any, error) {
 	h.CallCount++
+
 	return h.Result, nil
 }

@@ -93,7 +93,7 @@ func TestEnvelope_WithStamp(t *testing.T) {
 
 		withStamp := original.WithStamp(stamp)
 
-		assert.Len(t, original.Stamps(), 0, "Original envelope should not be modified")
+		assert.Empty(t, original.Stamps(), "Original envelope should not be modified")
 		assert.Len(t, withStamp.Stamps(), 1, "New envelope should have the stamp")
 
 		assert.Equal(t, original.Message(), withStamp.Message())
@@ -108,7 +108,7 @@ func TestEnvelope_WithStamp(t *testing.T) {
 		env2 := env1.WithStamp(helpers.AnotherStamp{Number: 42})
 		env3 := env2.WithStamp(helpers.TestStamp{Value: "second"})
 
-		assert.Len(t, env.Stamps(), 0)
+		assert.Empty(t, env.Stamps())
 		assert.Len(t, env1.Stamps(), 1)
 		assert.Len(t, env2.Stamps(), 2)
 		assert.Len(t, env3.Stamps(), 3)

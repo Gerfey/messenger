@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/gerfey/messenger/core/middleware/implementation"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+
+	"github.com/gerfey/messenger/core/middleware/implementation"
 
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/core/envelope"
@@ -26,13 +27,11 @@ func TestNewHandleMessageMiddleware(t *testing.T) {
 
 	middleware := implementation.NewHandleMessageMiddleware(locator, logger)
 
-	assert.NotNil(t, middleware)
-	assert.IsType(t, &implementation.HandleMessageMiddleware{}, middleware)
+	require.NotNil(t, middleware)
+	require.IsType(t, &implementation.HandleMessageMiddleware{}, middleware)
 }
 
 func TestHandleMessageMiddleware_Handle(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("skip processing if envelope has SentStamp", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -45,17 +44,18 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 		env := envelope.NewEnvelope(msg).WithStamp(stamps.SentStamp{Transport: "test"})
 
 		nextCalled := false
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
-		assert.Equal(t, env, result)
-		assert.False(t, nextCalled)
-		assert.Equal(t, 0, fakeHandler.Count())
+		require.NoError(t, err)
+		require.Equal(t, env, result)
+		require.False(t, nextCalled)
+		require.Equal(t, 0, fakeHandler.Count())
 	})
 
 	t.Run("return error when no handlers registered", func(t *testing.T) {
@@ -69,17 +69,17 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "no handlers registered for message type")
+		require.Error(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "no handlers registered for message type")
 
-		assert.True(t, fakeHandler.HasMessage(slog.LevelWarn, "no handlers registered for message type"))
+		require.True(t, fakeHandler.HasMessage(slog.LevelWarn, "no handlers registered for message type"))
 	})
 
 	t.Run("successfully handle message with single handler", func(t *testing.T) {
@@ -92,32 +92,33 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 
 		testHandler := &helpers.TestMessageHandler{}
 		err := locator.Register(testHandler)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
-		assert.Equal(t, result, nextEnv)
-		assert.True(t, nextCalled)
-		assert.Equal(t, 1, testHandler.CallCount)
+		require.NoError(t, err)
+		require.Equal(t, result, nextEnv)
+		require.True(t, nextCalled)
+		require.Equal(t, 1, testHandler.CallCount)
 
 		handledStamps := envelope.StampsOf[stamps.HandledStamp](result)
-		assert.Len(t, handledStamps, 1)
-		assert.NotEmpty(t, handledStamps[0].Handler)
+		require.Len(t, handledStamps, 1)
+		require.NotEmpty(t, handledStamps[0].Handler)
 
-		assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
-		assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
+		require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
+		require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
 	})
 
 	t.Run("successfully handle message with multiple handlers", func(t *testing.T) {
@@ -132,33 +133,34 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 		handler2 := &helpers.AnotherTestMessageHandler{}
 
 		err := locator.Register(handler1)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = locator.Register(handler2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
-		assert.Equal(t, result, nextEnv)
-		assert.True(t, nextCalled)
-		assert.Equal(t, 1, handler1.CallCount)
-		assert.Equal(t, 1, handler2.CallCount)
+		require.NoError(t, err)
+		require.Equal(t, result, nextEnv)
+		require.True(t, nextCalled)
+		require.Equal(t, 1, handler1.CallCount)
+		require.Equal(t, 1, handler2.CallCount)
 
 		handledStamps := envelope.StampsOf[stamps.HandledStamp](result)
-		assert.Len(t, handledStamps, 2)
+		require.Len(t, handledStamps, 2)
 
-		assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
+		require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
 		successCount := 0
 		entries := fakeHandler.GetEntriesByLevel(slog.LevelDebug)
 		for _, entry := range entries {
@@ -166,7 +168,7 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 				successCount++
 			}
 		}
-		assert.Equal(t, 2, successCount)
+		require.Equal(t, 2, successCount)
 	})
 
 	t.Run("handle error from handler", func(t *testing.T) {
@@ -181,23 +183,23 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 			Error: errors.New("handler error"),
 		}
 		err := locator.Register(errorHandler)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "handler error")
-		assert.Equal(t, 1, errorHandler.CallCount)
+		require.Error(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "handler error")
+		require.Equal(t, 1, errorHandler.CallCount)
 
-		assert.True(t, fakeHandler.HasMessage(slog.LevelError, "handler failed"))
+		require.True(t, fakeHandler.HasMessage(slog.LevelError, "handler failed"))
 	})
 
 	t.Run("handle handler with result", func(t *testing.T) {
@@ -212,31 +214,32 @@ func TestHandleMessageMiddleware_Handle(t *testing.T) {
 			Result: "test result",
 		}
 		err := locator.Register(resultHandler)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
-		assert.Equal(t, result, nextEnv)
-		assert.True(t, nextCalled)
-		assert.Equal(t, 1, resultHandler.CallCount)
+		require.NoError(t, err)
+		require.Equal(t, result, nextEnv)
+		require.True(t, nextCalled)
+		require.Equal(t, 1, resultHandler.CallCount)
 
 		handledStamps := envelope.StampsOf[stamps.HandledStamp](result)
-		assert.Len(t, handledStamps, 1)
-		assert.Equal(t, "test result", handledStamps[0].Result)
-		assert.NotEmpty(t, handledStamps[0].Handler)
+		require.Len(t, handledStamps, 1)
+		require.Equal(t, "test result", handledStamps[0].Result)
+		require.NotEmpty(t, handledStamps[0].Handler)
 
-		assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
+		require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
 	})
 }

@@ -24,7 +24,7 @@ func NewFakeHandler() *FakeHandler {
 	}
 }
 
-func (f *FakeHandler) Enabled(ctx context.Context, level slog.Level) bool {
+func (f *FakeHandler) Enabled(_ context.Context, _ slog.Level) bool {
 	return true
 }
 
@@ -35,6 +35,7 @@ func (f *FakeHandler) Handle(ctx context.Context, record slog.Record) error {
 	var attrs []slog.Attr
 	record.Attrs(func(a slog.Attr) bool {
 		attrs = append(attrs, a)
+
 		return true
 	})
 
@@ -48,17 +49,18 @@ func (f *FakeHandler) Handle(ctx context.Context, record slog.Record) error {
 	return nil
 }
 
-func (f *FakeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+func (f *FakeHandler) WithAttrs(_ []slog.Attr) slog.Handler {
 	return f
 }
 
-func (f *FakeHandler) WithGroup(name string) slog.Handler {
+func (f *FakeHandler) WithGroup(_ string) slog.Handler {
 	return f
 }
 
 func (f *FakeHandler) GetEntries() []LogEntry {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+
 	return append([]LogEntry(nil), f.entries...)
 }
 

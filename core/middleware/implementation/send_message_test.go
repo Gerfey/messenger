@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/gerfey/messenger/core/middleware/implementation"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+
+	"github.com/gerfey/messenger/core/middleware/implementation"
 
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/core/envelope"
@@ -29,13 +31,11 @@ func TestNewSendMessageMiddleware(t *testing.T) {
 
 	middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
 
-	assert.NotNil(t, middleware)
-	assert.IsType(t, &implementation.SendMessageMiddleware{}, middleware)
+	require.NotNil(t, middleware)
+	require.IsType(t, &implementation.SendMessageMiddleware{}, middleware)
 }
 
 func TestSendMessageMiddleware_Handle(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("skip processing if envelope has ReceivedStamp", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -44,22 +44,28 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockTransportLocator := mocks.NewMockTransportLocator(ctrl)
 		mockEventDispatcher := mocks.NewMockEventDispatcher(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg).WithStamp(stamps.ReceivedStamp{Transport: "test"})
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result, nextEnv)
 		assert.True(t, nextCalled)
 		assert.Equal(t, 0, fakeHandler.Count())
@@ -73,7 +79,12 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockTransportLocator := mocks.NewMockTransportLocator(ctrl)
 		mockEventDispatcher := mocks.NewMockEventDispatcher(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -82,15 +93,16 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result, nextEnv)
 		assert.True(t, nextCalled)
 		assert.True(t, fakeHandler.HasMessage(slog.LevelWarn, "no transports configured for message"))
@@ -105,34 +117,41 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockEventDispatcher := mocks.NewMockEventDispatcher(ctrl)
 		mockTransport := mocks.NewMockTransport(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 		transportNames := []string{"test-transport"}
 
 		mockRouter.EXPECT().GetTransportFor(msg).Return(transportNames)
-		mockEventDispatcher.EXPECT().Dispatch(ctx, gomock.Any()).DoAndReturn(
+		mockEventDispatcher.EXPECT().Dispatch(t.Context(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, event *event.SendMessageToTransportsEvent) error {
 				assert.Equal(t, ctx, event.Ctx)
 				assert.Equal(t, env, event.Envelope)
 				assert.Equal(t, transportNames, event.TransportNames)
+
 				return nil
 			})
 		mockTransportLocator.EXPECT().GetTransport("test-transport").Return(mockTransport)
-		mockTransport.EXPECT().Send(ctx, env).Return(nil)
+		mockTransport.EXPECT().Send(t.Context(), env).Return(nil)
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result, nextEnv)
 		assert.True(t, nextCalled)
 
@@ -154,30 +173,36 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockTransport1 := mocks.NewMockTransport(ctrl)
 		mockTransport2 := mocks.NewMockTransport(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 		transportNames := []string{"transport-1", "transport-2"}
 
 		mockRouter.EXPECT().GetTransportFor(msg).Return(transportNames)
-		mockEventDispatcher.EXPECT().Dispatch(ctx, gomock.Any()).Return(nil)
+		mockEventDispatcher.EXPECT().Dispatch(t.Context(), gomock.Any()).Return(nil)
 		mockTransportLocator.EXPECT().GetTransport("transport-1").Return(mockTransport1)
 		mockTransportLocator.EXPECT().GetTransport("transport-2").Return(mockTransport2)
-		mockTransport1.EXPECT().Send(ctx, gomock.Any()).Return(nil)
-		mockTransport2.EXPECT().Send(ctx, gomock.Any()).Return(nil)
+		mockTransport1.EXPECT().Send(t.Context(), gomock.Any()).Return(nil)
+		mockTransport2.EXPECT().Send(t.Context(), gomock.Any()).Return(nil)
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result, nextEnv)
 		assert.True(t, nextCalled)
 
@@ -209,7 +234,12 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockTransportLocator := mocks.NewMockTransportLocator(ctrl)
 		mockEventDispatcher := mocks.NewMockEventDispatcher(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -217,15 +247,15 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		dispatcherError := errors.New("dispatcher error")
 
 		mockRouter.EXPECT().GetTransportFor(msg).Return(transportNames)
-		mockEventDispatcher.EXPECT().Dispatch(ctx, gomock.Any()).Return(dispatcherError)
+		mockEventDispatcher.EXPECT().Dispatch(t.Context(), gomock.Any()).Return(dispatcherError)
 
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, dispatcherError, err)
 		assert.True(t, fakeHandler.HasMessage(slog.LevelError, "failed to dispatch send event"))
@@ -239,27 +269,33 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockTransportLocator := mocks.NewMockTransportLocator(ctrl)
 		mockEventDispatcher := mocks.NewMockEventDispatcher(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
 		transportNames := []string{"missing-transport"}
 
 		mockRouter.EXPECT().GetTransportFor(msg).Return(transportNames)
-		mockEventDispatcher.EXPECT().Dispatch(ctx, gomock.Any()).Return(nil)
+		mockEventDispatcher.EXPECT().Dispatch(t.Context(), gomock.Any()).Return(nil)
 		mockTransportLocator.EXPECT().GetTransport("missing-transport").Return(nil)
 
 		nextCalled := false
 		var nextEnv api.Envelope
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			nextCalled = true
 			nextEnv = env
+
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result, nextEnv)
 		assert.True(t, nextCalled)
 		assert.True(t, fakeHandler.HasMessage(slog.LevelError, "transport not found"))
@@ -274,7 +310,12 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		mockEventDispatcher := mocks.NewMockEventDispatcher(ctrl)
 		mockTransport := mocks.NewMockTransport(ctrl)
 		logger, fakeHandler := helpers.NewFakeLogger()
-		middleware := implementation.NewSendMessageMiddleware(mockRouter, mockTransportLocator, mockEventDispatcher, logger)
+		middleware := implementation.NewSendMessageMiddleware(
+			mockRouter,
+			mockTransportLocator,
+			mockEventDispatcher,
+			logger,
+		)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -282,17 +323,17 @@ func TestSendMessageMiddleware_Handle(t *testing.T) {
 		sendError := errors.New("send error")
 
 		mockRouter.EXPECT().GetTransportFor(msg).Return(transportNames)
-		mockEventDispatcher.EXPECT().Dispatch(ctx, gomock.Any()).Return(nil)
+		mockEventDispatcher.EXPECT().Dispatch(t.Context(), gomock.Any()).Return(nil)
 		mockTransportLocator.EXPECT().GetTransport("test-transport").Return(mockTransport)
-		mockTransport.EXPECT().Send(ctx, env).Return(sendError)
+		mockTransport.EXPECT().Send(t.Context(), env).Return(sendError)
 
-		next := func(ctx context.Context, env api.Envelope) (api.Envelope, error) {
+		next := func(_ context.Context, env api.Envelope) (api.Envelope, error) {
 			return env, nil
 		}
 
-		result, err := middleware.Handle(ctx, env, next)
+		result, err := middleware.Handle(t.Context(), env, next)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, sendError, err)
 		assert.True(t, fakeHandler.HasMessage(slog.LevelError, "failed to send message to transport"))

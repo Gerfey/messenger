@@ -57,11 +57,11 @@ type ErrorEvent struct {
 	ShouldFail bool
 }
 
-func SimpleEventListener(event *TestEvent) error {
+func SimpleEventListener(_ *TestEvent) error {
 	return nil
 }
 
-func TestEventListenerWithContext(ctx context.Context, event *TestEvent) error {
+func TestEventListenerWithContext(_ context.Context, _ *TestEvent) error {
 	return nil
 }
 
@@ -77,7 +77,7 @@ type TestEventHandler struct {
 	CallCount int
 }
 
-func (h *TestEventHandler) Handle(event *TestEvent) error {
+func (h *TestEventHandler) Handle(_ *TestEvent) error {
 	h.CallCount++
 
 	return nil
@@ -87,7 +87,7 @@ type TestEventHandlerWithContext struct {
 	CallCount int
 }
 
-func (h *TestEventHandlerWithContext) Handle(ctx context.Context, event *TestEvent) error {
+func (h *TestEventHandlerWithContext) Handle(_ context.Context, _ *TestEvent) error {
 	h.CallCount++
 
 	return nil
@@ -97,7 +97,7 @@ type ErrorEventHandler struct {
 	ShouldFail bool
 }
 
-func (h *ErrorEventHandler) Handle(event *ErrorEvent) error {
+func (h *ErrorEventHandler) Handle(_ *ErrorEvent) error {
 	if h.ShouldFail {
 		return errors.New("handler error")
 	}
@@ -115,6 +115,6 @@ func (h *InvalidEventHandlerWrongSignature) Handle() error {
 
 type InvalidEventHandlerTooManyParams struct{}
 
-func (h *InvalidEventHandlerTooManyParams) Handle(ctx context.Context, event *TestEvent, extra string) error {
+func (h *InvalidEventHandlerTooManyParams) Handle(_ context.Context, _ *TestEvent, _ string) error {
 	return nil
 }

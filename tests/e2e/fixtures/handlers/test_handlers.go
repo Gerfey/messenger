@@ -18,7 +18,7 @@ func NewE2ETestHandler() *E2ETestHandler {
 	return &E2ETestHandler{}
 }
 
-func (h *E2ETestHandler) Handle(ctx context.Context, msg *helpers.TestMessage) error {
+func (h *E2ETestHandler) Handle(_ context.Context, msg *helpers.TestMessage) error {
 	atomic.AddInt64(&h.callCount, 1)
 
 	h.mu.Lock()
@@ -35,5 +35,6 @@ func (h *E2ETestHandler) GetCallCount() int64 {
 func (h *E2ETestHandler) GetLastMessage() *helpers.TestMessage {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+
 	return h.lastMessage
 }

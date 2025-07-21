@@ -20,11 +20,11 @@ func NewDebugMiddleware(name string, logger *slog.Logger) *DebugMiddleware {
 }
 
 func (d *DebugMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
-	d.logger.Info("DEBUG MIDDLEWARE BEFORE")
-	
+	d.logger.InfoContext(ctx, "DEBUG MIDDLEWARE BEFORE")
+
 	result, err := next(ctx, env)
-	
-	d.logger.Info("DEBUG MIDDLEWARE AFTER")
-	
+
+	d.logger.InfoContext(ctx, "DEBUG MIDDLEWARE AFTER")
+
 	return result, err
 }
