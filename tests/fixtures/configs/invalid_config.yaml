@@ -1,0 +1,19 @@
+default_bus: default
+failure_transport: failure
+
+buses:
+  default:
+    middleware:
+      - handle_message
+      - send_message
+  async:
+    middleware:
+    - handle_message
+  # invalid YAML
+  broken:
+  middleware:
+    - broken_middleware
+
+transports:
+  default:
+    dsn: memory://default

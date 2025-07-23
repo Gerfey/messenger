@@ -21,7 +21,7 @@ func (m *Locator) Register(name string, middleware api.Middleware) {
 }
 
 func (m *Locator) GetAll() []api.Middleware {
-	var all []api.Middleware
+	all := make([]api.Middleware, 0)
 	for _, middleware := range m.middlewares {
 		all = append(all, middleware)
 	}

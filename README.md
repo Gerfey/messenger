@@ -18,7 +18,6 @@ A powerful message bus system for Go. Provides a flexible and extensible archite
 - **Message Routing**: Flexible routing system for message distribution
 - **Stamps System**: Metadata attachment for message tracking
 - **YAML Configuration**: Easy configuration management
-- **Full Test Coverage**: Comprehensive unit and E2E tests
 
 ## Installation
 

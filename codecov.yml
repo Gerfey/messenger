@@ -45,5 +45,7 @@ ignore:
   - "examples/"
   - "benchmarks/"
   - "**/*_test.go"
+  - "tests/e2e/fixtures/"
+  - "tests/e2e/helpers/"
   - "tests/mocks/"
-  - "tests/fixtures/"
+  - "tests/helpers/"

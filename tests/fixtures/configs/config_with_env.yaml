@@ -1,0 +1,34 @@
+default_bus: default
+failure_transport: failure
+
+buses:
+  default:
+    middleware:
+      - handle_message
+      - send_message
+
+transports:
+  default:
+    dsn: memory://%env(MEMORY_HOST)%
+    options:
+      auto_setup: true
+      consumer_pool_size: %env(CONSUMER_POOL_SIZE)%
+  
+  amqp:
+    dsn: %env(RABBITMQ_URL)%
+    retry_strategy:
+      max_retries: %env(MAX_RETRIES)%
+      delay: 1s
+      multiplier: 2
+      max_delay: 60s
+    options:
+      exchange:
+        name: messages
+        type: topic
+      queues:
+        default:
+          binding_keys:
+            - "#"
+
+routing:
+  "test.TestMessage": default

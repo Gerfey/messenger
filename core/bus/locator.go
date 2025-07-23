@@ -19,7 +19,7 @@ func (b *Locator) Register(name string, bus api.MessageBus) error {
 }
 
 func (b *Locator) GetAll() []api.MessageBus {
-	var all []api.MessageBus
+	all := make([]api.MessageBus, 0)
 	for _, bus := range b.busses {
 		all = append(all, bus)
 	}

@@ -36,7 +36,7 @@ type Builder struct {
 }
 
 func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
-	resolver := NewStaticTypeResolver()
+	resolver := NewResolver()
 
 	tf := transport.NewFactoryChain(
 		amqp.NewTransportFactory(resolver, logger),

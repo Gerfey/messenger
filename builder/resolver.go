@@ -12,7 +12,7 @@ type Resolver struct {
 	stampTypes   map[string]reflect.Type
 }
 
-func NewStaticTypeResolver() api.TypeResolver {
+func NewResolver() api.TypeResolver {
 	return &Resolver{
 		messageTypes: make(map[string]reflect.Type),
 		stampTypes:   make(map[string]reflect.Type),
