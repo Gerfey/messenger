@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  actions: read
+  contents: write
+
 jobs:
   release:
     name: Release
