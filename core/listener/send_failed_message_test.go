@@ -1,7 +1,6 @@
 package listener_test
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"testing"
@@ -90,8 +89,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 
 		mockTransport.EXPECT().Retry(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 
 		time.Sleep(10 * time.Millisecond)
 
@@ -129,8 +127,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 
 		mockFailureTransport.EXPECT().Send(gomock.Any(), gomock.Any()).Return(nil)
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 
 		assert.False(t, fakeLogger.HasMessage(slog.LevelError, "failed to send message to failure transport"))
 	})
@@ -167,8 +164,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		expectedErr := errors.New("failure transport error")
 		mockFailureTransport.EXPECT().Send(gomock.Any(), gomock.Any()).Return(expectedErr)
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 
 		assert.True(t, fakeLogger.HasMessage(slog.LevelError, "failed to send message to failure transport"))
 	})
@@ -207,8 +203,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 
 		mockTransport.EXPECT().Retry(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 
 		time.Sleep(10 * time.Millisecond)
 	})
@@ -237,8 +232,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 			Error:         errors.New("send failed"),
 		}
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 	})
 
 	t.Run("ignores event with mismatched transport name", func(t *testing.T) {
@@ -267,8 +261,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 			Error:         errors.New("send failed"),
 		}
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 	})
 
 	t.Run("does nothing when retry not allowed and no failure transport", func(t *testing.T) {
@@ -299,8 +292,7 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 
 		mockStrategy.EXPECT().ShouldRetry(uint(0)).Return(time.Duration(0), false)
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 	})
 }
 
@@ -334,8 +326,7 @@ func TestSendFailedMessageForRetryListener_Integration(t *testing.T) {
 
 		mockTransport.EXPECT().Retry(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-		ctx := context.Background()
-		l.Handle(ctx, evt)
+		l.Handle(t.Context(), evt)
 
 		time.Sleep(50 * time.Millisecond)
 
