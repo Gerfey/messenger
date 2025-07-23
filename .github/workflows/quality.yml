@@ -1,0 +1,64 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.24
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-quality-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-quality-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run gofmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run ineffassign
+      run: |
+        go install github.com/gordonklaus/ineffassign@latest
+        ineffassign ./...
+
+    - name: Run misspell
+      run: |
+        go install github.com/client9/misspell/cmd/misspell@latest
+        misspell -error .
+
+    - name: Check go mod tidy
+      run: |
+        go mod tidy
+        if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+          echo "go.mod or go.sum is not tidy"
+          git diff go.mod go.sum
+          exit 1
+        fi

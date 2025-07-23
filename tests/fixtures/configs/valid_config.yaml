@@ -1,0 +1,29 @@
+default_bus: default
+failure_transport: failure
+
+buses:
+  default:
+    middleware:
+      - handle_message
+      - send_message
+  async:
+    middleware:
+      - handle_message
+      - send_message
+
+transports:
+  default:
+    dsn: memory://default
+    options:
+      auto_setup: true
+      consumer_pool_size: 10
+  
+  failure:
+    dsn: memory://failure
+    options:
+      auto_setup: true
+      consumer_pool_size: 5
+
+routing:
+  "test.TestMessage": default
+  "test.AsyncMessage": async

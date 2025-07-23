@@ -1,0 +1,23 @@
+default_bus: default
+
+buses:
+  default: ~
+
+transports:
+  amqp:
+    dsn: "%env(MESSENGER_AMQP_DSN)%"
+    options:
+      exchange:
+        name: test.exchange
+        type: topic
+        durable: true
+        auto_delete: false
+        internal: false
+      queues:
+        test:
+          durable: true
+          binding_keys:
+            - test_routing_key
+
+routing:
+  examples.ExampleHelloMessage: amqp
