@@ -1,4 +1,4 @@
-# Messenger Documentation
+# Messenger
 
 [![CI](https://github.com/Gerfey/messenger/actions/workflows/ci.yml/badge.svg)](https://github.com/Gerfey/messenger/actions/workflows/ci.yml)
 [![Security](https://github.com/Gerfey/messenger/actions/workflows/security.yml/badge.svg)](https://github.com/Gerfey/messenger/actions/workflows/security.yml)
@@ -7,112 +7,102 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Gerfey/messenger.svg)](https://pkg.go.dev/github.com/Gerfey/messenger)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Pre-release MVP version. Requires Go 1.24+
+> ⚠️ `v0.6.0` is a pre-release version — feel free to test and report issues!
 
-## Installation
+> 📚 Full documentation available in the [GitHub Wiki](https://github.com/Gerfey/messenger/wiki/Documentation)
 
-```bash
-go get github.com/gerfey/messenger@v0.6.0
-```
+🇷🇺 [Русская версия](README.ru.md)
 
-## Overview
-- **Multiple Transports**: AMQP (RabbitMQ), In-Memory
+## ✨ Features
+- **Multiple Transports**: AMQP (RabbitMQ), In-Memory (sync)
 - **Middleware Chain**: Extensible middleware system for message processing
 - **Event-Driven**: Built-in event dispatcher for lifecycle hooks
 - **Retry Mechanism**: Configurable retry strategies with exponential backoff
 - **Message Routing**: Flexible routing system for message distribution
 - **Stamps System**: Metadata attachment for message tracking
-- **YAML Configuration**: Easy configuration management
+- **YAML Configuration**: Easy configuration management with `%env(...)%` support
 
-## Quick Start
+## 📦 Installation
+> Requires Go 1.24+
+```bash
+go get github.com/gerfey/messenger@v0.6.0
+```
 
-### 1. Define Your Message
+## 🚀 Quick Start
+
+### Define Your Message
 
 ```go
+package main
+
 type HelloMessage struct {
     Text string
 }
 ```
 
-### 2. Create a Handler
+### Create a Handler
 
 ```go
+package main
+
 type HelloHandler struct{}
 
 func (h *HelloHandler) Handle(ctx context.Context, msg *HelloMessage) error {
-    fmt.Printf("Received: %s\n", msg.Text)
+    fmt.Println("Hello:", msg.Text)
     return nil
 }
 ```
 
-### 3. Configure and Run
+### Create config file `messenger.yaml`:
 
 ```yaml
-# messenger.yaml
 default_bus: default
 
 buses:
   default: ~
 
 transports:
-  amqp:
-    dsn: "amqp://guest:guest@localhost:5672/"
-    options:
-      auto_setup: true
-      exchange:
-        name: messages
-        type: topic
+  sync:
+    dsn: "in-memory://"
 
 routing:
-  package.HelloMessage: amqp
+  main.HelloMessage: sync
 ```
+> 💡 If no transport is configured for a message, it will be executed synchronously by default (inline handler execution).
+
+### Initialize messenger:
 
 ```go
-package main
-
-import (
-    "context"
-    "log/slog"
-
-    "github.com/Gerfey/messenger/builder"
-    "github.com/Gerfey/messenger/config"
-)
-
-func main() {
-    ctx := context.Background()
-    logger := slog.Default()
-
-    // Load configuration
-    cfg, err := config.LoadConfig("messenger.yaml")
-    if err != nil {
-        logger.Error("failed to load config", "error", err)
-        return
-    }
-
-    // Build messenger
-    b := builder.NewBuilder(cfg, logger)
-    b.RegisterHandler(&HelloHandler{})
-
-    messenger, err := b.Build()
-    if err != nil {
-        logger.Error("failed to build messenger", "error", err)
-        return
-    }
-
-    // Start consuming
-    go func() {
-        if err := messenger.Run(ctx); err != nil {
-            logger.Error("messenger failed", "error", err)
-        }
-    }()
-
-    // Send message
-    bus, _ := messenger.GetDefaultBus()
-    bus.Dispatch(ctx, &HelloMessage{Text: "Hello, World!"})
+cfg, errConfig := config.LoadConfig("messenger.yaml")
+if errConfig != nil {
+    l.Error("ERROR load config", "error", errConfig)
+    return
 }
+
+b := builder.NewBuilder(cfg, slog.Default())
+b.RegisterHandler(&HelloHandler{})
+m, _ := b.Build()
+
+ctx := context.Background()
+go m.Run(ctx)
+
+bus, _ := m.GetDefaultBus()
+_, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
+
+time.Sleep(5 * time.Second)
 ```
 
-## Contributing
+## 🔍 More Examples
+
+* ✅ Commands with void return
+* ✅ Queries with return value access
+* ✅ Retry and Dead Letter Queue
+* ✅ Custom Middleware and Transports
+* ✅ Event Listeners and Lifecycle Hooks
+
+> See [Usage Scenarios](https://github.com/Gerfey/messenger/wiki/Usage-Scenarios) for commands, queries, return values and advanced use-cases.
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -120,11 +110,15 @@ func main() {
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## ⚖️ License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## ⭐️ Support
+
+If you find this project useful, please consider starring ⭐️ it and sharing with others!
+
+## 🙏 Acknowledgments
 
 - Inspired by [Symfony Messenger](https://symfony.com/doc/current/messenger.html)
 - Built with ❤️ for the Go community
