@@ -7,7 +7,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Gerfey/messenger.svg)](https://pkg.go.dev/github.com/Gerfey/messenger)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> ⚠️ `v0.6.0` is a pre-release version — feel free to test and report issues!
+> ⚠️ `v0.7.0` is a pre-release version — feel free to test and report issues!
 
 > 📚 Full documentation available in the [GitHub Wiki](https://github.com/Gerfey/messenger/wiki/Documentation)
 
@@ -25,7 +25,7 @@
 ## 📦 Installation
 > Requires Go 1.24+
 ```bash
-go get github.com/gerfey/messenger@v0.6.0
+go get github.com/gerfey/messenger@v0.7.0
 ```
 
 ## 🚀 Quick Start
@@ -60,13 +60,6 @@ default_bus: default
 
 buses:
   default: ~
-
-transports:
-  sync:
-    dsn: "in-memory://"
-
-routing:
-  main.HelloMessage: sync
 ```
 > 💡 If no transport is configured for a message, it will be executed synchronously by default (inline handler execution).
 
@@ -88,8 +81,6 @@ go m.Run(ctx)
 
 bus, _ := m.GetDefaultBus()
 _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
-
-time.Sleep(5 * time.Second)
 ```
 
 ## 🔍 More Examples
