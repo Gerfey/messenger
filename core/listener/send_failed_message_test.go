@@ -30,10 +30,10 @@ func TestNewSendFailedMessageForRetryListener(t *testing.T) {
 		logger, _ := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			mockFailureTransport,
 			mockStrategy,
-			logger,
 		)
 
 		require.NotNil(t, l)
@@ -48,10 +48,10 @@ func TestNewSendFailedMessageForRetryListener(t *testing.T) {
 		logger, _ := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			mockStrategy,
-			logger,
 		)
 
 		require.NotNil(t, l)
@@ -68,10 +68,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, fakeLogger := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -106,10 +106,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, fakeLogger := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			mockFailureTransport,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -142,10 +142,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, fakeLogger := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			mockFailureTransport,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -178,10 +178,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, _ := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -217,10 +217,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, _ := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -244,10 +244,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, _ := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -273,10 +273,10 @@ func TestSendFailedMessageForRetryListener_Handle(t *testing.T) {
 		logger, _ := helpers.NewFakeLogger()
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			mockStrategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}
@@ -307,10 +307,10 @@ func TestSendFailedMessageForRetryListener_Integration(t *testing.T) {
 		strategy := retry.NewMultiplierRetryStrategy(3, 10*time.Millisecond, 2.0, 100*time.Millisecond)
 
 		l := listener.NewSendFailedMessageForRetryListener(
+			logger,
 			mockTransport,
 			nil,
 			strategy,
-			logger,
 		)
 
 		msg := &helpers.TestMessage{ID: "123", Content: "test"}

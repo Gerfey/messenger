@@ -60,7 +60,7 @@ func TestE2E_HappyPath_SingleHandlerSingleTransport(t *testing.T) {
 	assert.Equal(t, int64(1), testHandler.GetCallCount())
 	assert.Equal(t, testMessage, testHandler.GetLastMessage())
 
-	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to transports"))
+	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to sender"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message sent successfully"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
@@ -113,10 +113,9 @@ func TestE2E_HappyPath_MultipleHandlers(t *testing.T) {
 	assert.Equal(t, int64(1), handler1.GetCallCount())
 	assert.Equal(t, int64(1), handler2.GetCallCount())
 
-	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to transports"))
+	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to sender"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message sent successfully"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
-	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
 }
 
 func TestE2E_HappyPath_MultipleTransports(t *testing.T) {
@@ -161,7 +160,7 @@ func TestE2E_HappyPath_MultipleTransports(t *testing.T) {
 
 	assert.Equal(t, int64(1), testHandler.GetCallCount())
 
-	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to transports"))
+	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to sender"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message sent successfully"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
 	assert.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))

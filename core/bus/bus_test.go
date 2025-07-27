@@ -68,7 +68,7 @@ func TestBus_Dispatch(t *testing.T) {
 		messageBus := bus.NewBus()
 		msg := &helpers.TestMessage{Content: "test"}
 		busNameStamp := &stamps.BusNameStamp{Name: "test-bus"}
-		sentStamp := &stamps.SentStamp{Transport: "test-transport"}
+		sentStamp := &stamps.SentStamp{SenderName: "test-transport"}
 
 		env, err := messageBus.Dispatch(t.Context(), msg, busNameStamp, sentStamp)
 
@@ -88,7 +88,7 @@ func TestBus_Dispatch(t *testing.T) {
 				assert.Equal(t, "test-bus", stamp.Name)
 				foundBusNameStamp = true
 			case *stamps.SentStamp:
-				assert.Equal(t, "test-transport", stamp.Transport)
+				assert.Equal(t, "test-transport", stamp.SenderName)
 				foundSentStamp = true
 			}
 		}

@@ -1,43 +1,60 @@
 package transport_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/transport"
-
+	"github.com/gerfey/messenger/core/envelope"
+	"github.com/gerfey/messenger/core/stamps"
 	"github.com/gerfey/messenger/tests/helpers"
+	"github.com/gerfey/messenger/transport"
 )
 
-func TestNewLocator(t *testing.T) {
+type TestMessage struct {
+	Text string
+}
+
+type AnotherMessage struct {
+	Value int
+}
+
+func TestNewSenderLocator(t *testing.T) {
 	t.Run("create new locator", func(t *testing.T) {
-		locator := transport.NewLocator()
+		locator := transport.NewSenderLocator()
 
 		require.NotNil(t, locator)
-		assert.IsType(t, &transport.Locator{}, locator)
+		assert.IsType(t, &transport.SenderLocator{}, locator)
 
-		all := locator.GetAllTransports()
-		assert.Empty(t, all)
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+		assert.Empty(t, senders)
 	})
 }
 
-func TestLocator_Register(t *testing.T) {
+func TestSenderLocator_Register(t *testing.T) {
 	t.Run("register single transport", func(t *testing.T) {
-		locator := transport.NewLocator()
+		locator := transport.NewSenderLocator()
 		tr := &helpers.TestTransport{}
 
 		err := locator.Register("test-transport", tr)
 
 		require.NoError(t, err)
 
-		retrieved := locator.GetTransport("test-transport")
-		assert.Equal(t, tr, retrieved)
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"test-transport"})
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 1)
+		assert.Equal(t, tr, senders[0])
 	})
 
 	t.Run("register multiple transports", func(t *testing.T) {
-		locator := transport.NewLocator()
+		locator := transport.NewSenderLocator()
 		transport1 := &helpers.TestTransport{}
 		transport2 := &helpers.TestTransport{}
 
@@ -47,205 +64,244 @@ func TestLocator_Register(t *testing.T) {
 		require.NoError(t, err1)
 		require.NoError(t, err2)
 
-		retrieved1 := locator.GetTransport("transport1")
-		retrieved2 := locator.GetTransport("transport2")
-		assert.Equal(t, transport1, retrieved1)
-		assert.Equal(t, transport2, retrieved2)
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"transport1", "transport2"})
 
-		all := locator.GetAllTransports()
-		assert.Len(t, all, 2)
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 2)
+		assert.Contains(t, senders, transport1)
+		assert.Contains(t, senders, transport2)
 	})
 
-	t.Run("register transport with same name overwrites previous", func(t *testing.T) {
-		locator := transport.NewLocator()
+	t.Run("register duplicate transport overwrites", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
 		transport1 := &helpers.TestTransport{}
 		transport2 := &helpers.TestTransport{}
 
-		err1 := locator.Register("test-transport", transport1)
-		err2 := locator.Register("test-transport", transport2)
+		err1 := locator.Register("same-name", transport1)
+		err2 := locator.Register("same-name", transport2)
 
 		require.NoError(t, err1)
 		require.NoError(t, err2)
 
-		retrieved := locator.GetTransport("test-transport")
-		assert.Same(t, transport2, retrieved)
-		assert.NotSame(t, transport1, retrieved)
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"same-name"})
 
-		all := locator.GetAllTransports()
-		assert.Len(t, all, 1)
-	})
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
 
-	t.Run("register transport with empty name", func(t *testing.T) {
-		locator := transport.NewLocator()
-		tr := &helpers.TestTransport{}
-
-		err := locator.Register("", tr)
-
-		require.NoError(t, err)
-
-		retrieved := locator.GetTransport("")
-		assert.Equal(t, tr, retrieved)
-	})
-
-	t.Run("register nil transport", func(t *testing.T) {
-		locator := transport.NewLocator()
-
-		err := locator.Register("test-transport", nil)
-
-		require.NoError(t, err)
-
-		retrieved := locator.GetTransport("test-transport")
-		assert.Nil(t, retrieved)
+		require.Len(t, senders, 1)
+		assert.Equal(t, transport2, senders[0])
 	})
 }
 
-func TestLocator_GetTransport(t *testing.T) {
-	t.Run("get existing transport", func(t *testing.T) {
-		locator := transport.NewLocator()
-		tr := &helpers.TestTransport{}
+func TestSenderLocator_RegisterMessageType(t *testing.T) {
+	t.Run("register message type with single transport", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		transport1 := &helpers.TestTransport{}
 
-		err := locator.Register("test-transport", tr)
+		err := locator.Register("transport1", transport1)
 		require.NoError(t, err)
 
-		retrieved := locator.GetTransport("test-transport")
-		assert.Equal(t, tr, retrieved)
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"transport1"})
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 1)
+		assert.Equal(t, transport1, senders[0])
 	})
 
-	t.Run("get non-existing transport", func(t *testing.T) {
-		locator := transport.NewLocator()
-
-		retrieved := locator.GetTransport("non-existing")
-		assert.Nil(t, retrieved)
-	})
-
-	t.Run("get transport with empty name", func(t *testing.T) {
-		locator := transport.NewLocator()
-
-		retrieved := locator.GetTransport("")
-		assert.Nil(t, retrieved)
-	})
-
-	t.Run("get after multiple registrations", func(t *testing.T) {
-		locator := transport.NewLocator()
-		transport1 := &helpers.TestTransport{}
-		transport2 := &helpers.TestTransport{}
-		transport3 := &helpers.TestTransport{}
-
-		require.NoError(t, locator.Register("transport1", transport1))
-		require.NoError(t, locator.Register("transport2", transport2))
-		require.NoError(t, locator.Register("transport3", transport3))
-
-		retrieved1 := locator.GetTransport("transport1")
-		retrieved2 := locator.GetTransport("transport2")
-		retrieved3 := locator.GetTransport("transport3")
-
-		assert.Equal(t, transport1, retrieved1)
-		assert.Equal(t, transport2, retrieved2)
-		assert.Equal(t, transport3, retrieved3)
-
-		retrievedNone := locator.GetTransport("non-existing")
-		assert.Nil(t, retrievedNone)
-	})
-}
-
-func TestLocator_GetAllTransports(t *testing.T) {
-	t.Run("get all from empty locator", func(t *testing.T) {
-		locator := transport.NewLocator()
-
-		all := locator.GetAllTransports()
-		assert.Empty(t, all)
-	})
-
-	t.Run("get all with single transport", func(t *testing.T) {
-		locator := transport.NewLocator()
-		tr := &helpers.TestTransport{}
-
-		require.NoError(t, locator.Register("test-transport", tr))
-
-		all := locator.GetAllTransports()
-		assert.Len(t, all, 1)
-		assert.Contains(t, all, tr)
-	})
-
-	t.Run("get all with multiple transports", func(t *testing.T) {
-		locator := transport.NewLocator()
-		transport1 := &helpers.TestTransport{}
-		transport2 := &helpers.TestTransport{}
-		transport3 := &helpers.TestTransport{}
-
-		require.NoError(t, locator.Register("transport1", transport1))
-		require.NoError(t, locator.Register("transport2", transport2))
-		require.NoError(t, locator.Register("transport3", transport3))
-
-		all := locator.GetAllTransports()
-		assert.Len(t, all, 3)
-		assert.Contains(t, all, transport1)
-		assert.Contains(t, all, transport2)
-		assert.Contains(t, all, transport3)
-	})
-
-	t.Run("get all with nil transport", func(t *testing.T) {
-		locator := transport.NewLocator()
-		tr := &helpers.TestTransport{}
-
-		require.NoError(t, locator.Register("real-transport", tr))
-		require.NoError(t, locator.Register("nil-transport", nil))
-
-		all := locator.GetAllTransports()
-		assert.Len(t, all, 2)
-		assert.Contains(t, all, tr)
-		assert.Contains(t, all, nil)
-	})
-
-	t.Run("get all returns slice of transports", func(t *testing.T) {
-		locator := transport.NewLocator()
+	t.Run("register message type with multiple transports", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
 		transport1 := &helpers.TestTransport{}
 		transport2 := &helpers.TestTransport{}
 
 		require.NoError(t, locator.Register("transport1", transport1))
 		require.NoError(t, locator.Register("transport2", transport2))
 
-		all1 := locator.GetAllTransports()
-		all2 := locator.GetAllTransports()
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"transport1", "transport2"})
 
-		assert.ElementsMatch(t, all1, all2)
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
 
-		assert.NotSame(t, &all1, &all2)
+		require.Len(t, senders, 2)
+		assert.Contains(t, senders, transport1)
+		assert.Contains(t, senders, transport2)
+	})
+
+	t.Run("register message type with non-existing transport", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"non-existing"})
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+
+		assert.Empty(t, senders)
 	})
 }
 
-func TestLocator_Integration(t *testing.T) {
-	t.Run("full workflow with multiple operations", func(t *testing.T) {
-		locator := transport.NewLocator()
+func TestSenderLocator_SetFallback(t *testing.T) {
+	t.Run("set fallback with single transport", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		fallbackTransport := &helpers.TestTransport{}
 
-		all := locator.GetAllTransports()
-		assert.Empty(t, all)
+		require.NoError(t, locator.Register("fallback", fallbackTransport))
+		locator.SetFallback([]string{"fallback"})
 
-		defaultTransport := &helpers.TestTransport{}
-		asyncTransport := &helpers.TestTransport{}
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
 
-		require.NoError(t, locator.Register("default", defaultTransport))
-		require.NoError(t, locator.Register("async", asyncTransport))
+		require.Len(t, senders, 1)
+		assert.Equal(t, fallbackTransport, senders[0])
+	})
 
-		all = locator.GetAllTransports()
-		assert.Len(t, all, 2)
+	t.Run("set fallback with multiple transports", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		fallback1 := &helpers.TestTransport{}
+		fallback2 := &helpers.TestTransport{}
 
-		retrievedDefault := locator.GetTransport("default")
-		retrievedAsync := locator.GetTransport("async")
-		assert.Equal(t, defaultTransport, retrievedDefault)
-		assert.Equal(t, asyncTransport, retrievedAsync)
+		require.NoError(t, locator.Register("fallback1", fallback1))
+		require.NoError(t, locator.Register("fallback2", fallback2))
+		locator.SetFallback([]string{"fallback1", "fallback2"})
 
-		newDefaultTransport := &helpers.TestTransport{}
-		require.NoError(t, locator.Register("default", newDefaultTransport))
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
 
-		all = locator.GetAllTransports()
-		assert.Len(t, all, 2)
+		require.Len(t, senders, 2)
+		assert.Contains(t, senders, fallback1)
+		assert.Contains(t, senders, fallback2)
+	})
+}
 
-		retrievedNewDefault := locator.GetTransport("default")
-		assert.Same(t, newDefaultTransport, retrievedNewDefault)
-		assert.NotSame(t, defaultTransport, retrievedNewDefault)
+func TestSenderLocator_GetSenders_Priority(t *testing.T) {
+	t.Run("TransportNameStamp has highest priority", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		stampTransport := &helpers.TestTransport{}
+		mappedTransport := &helpers.TestTransport{}
+		fallbackTransport := &helpers.TestTransport{}
 
-		retrievedAsync = locator.GetTransport("async")
-		assert.Same(t, asyncTransport, retrievedAsync)
+		require.NoError(t, locator.Register("stamp", stampTransport))
+		require.NoError(t, locator.Register("mapped", mappedTransport))
+		require.NoError(t, locator.Register("fallback", fallbackTransport))
+
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"mapped"})
+		locator.SetFallback([]string{"fallback"})
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		env = env.WithStamp(stamps.TransportNameStamp{Transports: []string{"stamp"}})
+
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 1)
+		assert.Equal(t, stampTransport, senders[0])
+	})
+
+	t.Run("sendersMap has second priority", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		mappedTransport := &helpers.TestTransport{}
+		fallbackTransport := &helpers.TestTransport{}
+
+		require.NoError(t, locator.Register("mapped", mappedTransport))
+		require.NoError(t, locator.Register("fallback", fallbackTransport))
+
+		msgType := reflect.TypeOf(&TestMessage{})
+		locator.RegisterMessageType(msgType, []string{"mapped"})
+		locator.SetFallback([]string{"fallback"})
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 1)
+		assert.Equal(t, mappedTransport, senders[0])
+	})
+
+	t.Run("fallback has lowest priority", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		fallbackTransport := &helpers.TestTransport{}
+
+		require.NoError(t, locator.Register("fallback", fallbackTransport))
+		locator.SetFallback([]string{"fallback"})
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 1)
+		assert.Equal(t, fallbackTransport, senders[0])
+	})
+}
+
+func TestSenderLocator_GetSenders_Deduplication(t *testing.T) {
+	t.Run("prevents duplicate senders", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+		transport1 := &helpers.TestTransport{}
+
+		require.NoError(t, locator.Register("transport1", transport1))
+
+		env := envelope.NewEnvelope(&TestMessage{Text: "test"})
+		env = env.WithStamp(stamps.TransportNameStamp{
+			Transports: []string{"transport1", "transport1", "transport1"},
+		})
+
+		senders := locator.GetSenders(env)
+
+		require.Len(t, senders, 1)
+		assert.Equal(t, transport1, senders[0])
+	})
+}
+
+func TestSenderLocator_Integration(t *testing.T) {
+	t.Run("complex scenario with all features", func(t *testing.T) {
+		locator := transport.NewSenderLocator()
+
+		amqp := &helpers.TestTransport{}
+		redis := &helpers.TestTransport{}
+		sync := &helpers.TestTransport{}
+
+		require.NoError(t, locator.Register("amqp", amqp))
+		require.NoError(t, locator.Register("redis", redis))
+		require.NoError(t, locator.Register("sync", sync))
+
+		testMsgType := reflect.TypeOf(&TestMessage{})
+		anotherMsgType := reflect.TypeOf(&AnotherMessage{})
+
+		locator.RegisterMessageType(testMsgType, []string{"amqp", "redis"})
+		locator.RegisterMessageType(anotherMsgType, []string{"redis"})
+		locator.SetFallback([]string{"sync"})
+
+		env1 := envelope.NewEnvelope(&TestMessage{Text: "test1"})
+		env1 = env1.WithStamp(stamps.TransportNameStamp{Transports: []string{"sync"}})
+
+		senders1 := locator.GetSenders(env1)
+		require.Len(t, senders1, 1)
+		assert.Equal(t, sync, senders1[0])
+
+		env2 := envelope.NewEnvelope(&TestMessage{Text: "test2"})
+
+		senders2 := locator.GetSenders(env2)
+		require.Len(t, senders2, 2)
+		assert.Contains(t, senders2, amqp)
+		assert.Contains(t, senders2, redis)
+
+		type UnknownMessage struct{ Data string }
+		env3 := envelope.NewEnvelope(&UnknownMessage{Data: "test3"})
+
+		senders3 := locator.GetSenders(env3)
+		require.Len(t, senders3, 1)
+		assert.Equal(t, sync, senders3[0])
+
+		env4 := envelope.NewEnvelope(&AnotherMessage{Value: 42})
+
+		senders4 := locator.GetSenders(env4)
+
+		require.Len(t, senders4, 1)
+		assert.Equal(t, redis, senders4[0])
 	})
 }

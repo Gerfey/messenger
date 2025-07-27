@@ -1,5 +1,5 @@
 package stamps
 
 type SentStamp struct {
-	Transport string
+	SenderName string
 }

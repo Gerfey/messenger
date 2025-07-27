@@ -21,7 +21,7 @@ func TestNewManager(t *testing.T) {
 		handler := func(_ context.Context, _ api.Envelope) error { return nil }
 		logger := slog.Default()
 
-		manager := transport.NewManager(handler, nil, logger)
+		manager := transport.NewManager(logger, handler, nil)
 
 		require.NotNil(t, manager)
 		assert.IsType(t, &transport.Manager{}, manager)
@@ -39,7 +39,7 @@ func TestManager_HasTransport(t *testing.T) {
 	t.Run("has transport by name", func(t *testing.T) {
 		handler := func(_ context.Context, _ api.Envelope) error { return nil }
 		logger := slog.Default()
-		manager := transport.NewManager(handler, nil, logger)
+		manager := transport.NewManager(logger, handler, nil)
 
 		tr := &helpers.TestTransport{TransportName: "test-transport"}
 		manager.AddTransport(tr)
@@ -52,7 +52,7 @@ func TestManager_HasTransport(t *testing.T) {
 	t.Run("has transport with multiple transports", func(t *testing.T) {
 		handler := func(_ context.Context, _ api.Envelope) error { return nil }
 		logger := slog.Default()
-		manager := transport.NewManager(handler, nil, logger)
+		manager := transport.NewManager(logger, handler, nil)
 
 		transport1 := &helpers.TestTransport{TransportName: "transport1"}
 		transport2 := &helpers.TestTransport{TransportName: "transport2"}
@@ -71,7 +71,7 @@ func TestManager_HasTransport(t *testing.T) {
 	t.Run("has transport with no transports", func(t *testing.T) {
 		handler := func(_ context.Context, _ api.Envelope) error { return nil }
 		logger := slog.Default()
-		manager := transport.NewManager(handler, nil, logger)
+		manager := transport.NewManager(logger, handler, nil)
 
 		assert.False(t, manager.HasTransport("any-transport"))
 	})
@@ -79,7 +79,7 @@ func TestManager_HasTransport(t *testing.T) {
 	t.Run("has transport with nil transport", func(t *testing.T) {
 		handler := func(_ context.Context, _ api.Envelope) error { return nil }
 		logger := slog.Default()
-		manager := transport.NewManager(handler, nil, logger)
+		manager := transport.NewManager(logger, handler, nil)
 
 		manager.AddTransport(nil)
 
@@ -97,7 +97,7 @@ func TestManager_Integration(t *testing.T) {
 		}
 
 		logger := slog.Default()
-		manager := transport.NewManager(handler, nil, logger)
+		manager := transport.NewManager(logger, handler, nil)
 
 		tr := &helpers.TestTransport{
 			TransportName: "error-transport",

@@ -13,23 +13,23 @@ import (
 )
 
 type SendFailedMessageForRetryListener struct {
+	logger           *slog.Logger
 	transport        api.RetryableTransport
 	failureTransport api.Transport
 	retryStrategy    retry.Strategy
-	logger           *slog.Logger
 }
 
 func NewSendFailedMessageForRetryListener(
+	logger *slog.Logger,
 	transport api.RetryableTransport,
 	failureTransport api.Transport,
 	strategy retry.Strategy,
-	logger *slog.Logger,
 ) *SendFailedMessageForRetryListener {
 	return &SendFailedMessageForRetryListener{
+		logger:           logger,
 		transport:        transport,
 		failureTransport: failureTransport,
 		retryStrategy:    strategy,
-		logger:           logger,
 	}
 }
 

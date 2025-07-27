@@ -40,5 +40,5 @@ func TestE2E_Simple_HandlerOnly(t *testing.T) {
 	require.Equal(t, int64(1), testHandler.GetCallCount())
 	require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "processing message"))
 	require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "message handled successfully"))
-	require.True(t, fakeHandler.HasMessage(slog.LevelWarn, "no transports configured for message"))
+	require.True(t, fakeHandler.HasMessage(slog.LevelDebug, "sending message to sender"))
 }

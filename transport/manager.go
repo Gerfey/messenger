@@ -10,24 +10,24 @@ import (
 )
 
 type Manager struct {
+	logger          *slog.Logger
 	transports      []api.Transport
 	handler         func(context.Context, api.Envelope) error
 	eventDispatcher api.EventDispatcher
-	logger          *slog.Logger
 	wg              sync.WaitGroup
 	mu              sync.Mutex
 	running         bool
 }
 
 func NewManager(
+	logger *slog.Logger,
 	handler func(context.Context, api.Envelope) error,
 	eventDispatcher api.EventDispatcher,
-	logger *slog.Logger,
 ) *Manager {
 	return &Manager{
+		logger:          logger,
 		handler:         handler,
 		eventDispatcher: eventDispatcher,
-		logger:          logger,
 	}
 }
 

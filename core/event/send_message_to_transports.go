@@ -7,7 +7,7 @@ import (
 )
 
 type SendMessageToTransportsEvent struct {
-	Ctx            context.Context
-	Envelope       api.Envelope
-	TransportNames []string
+	Ctx      context.Context
+	Envelope api.Envelope
+	Senders  []api.Sender
 }

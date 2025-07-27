@@ -21,6 +21,7 @@ import (
 	"github.com/gerfey/messenger/transport"
 	"github.com/gerfey/messenger/transport/amqp"
 	"github.com/gerfey/messenger/transport/inmemory"
+	"github.com/gerfey/messenger/transport/sync"
 )
 
 type Builder struct {
@@ -28,7 +29,7 @@ type Builder struct {
 	resolver          api.TypeResolver
 	transportFactory  *transport.FactoryChain
 	handlersLocator   api.HandlerLocator
-	transportLocator  api.TransportLocator
+	senderLocator     api.SenderLocator
 	middlewareLocator api.MiddlewareLocator
 	busLocator        api.BusLocator
 	eventDispatcher   api.EventDispatcher
@@ -38,9 +39,12 @@ type Builder struct {
 func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 	resolver := NewResolver()
 
+	busLocator := bus.NewLocator()
+
 	tf := transport.NewFactoryChain(
-		amqp.NewTransportFactory(resolver, logger),
-		inmemory.NewTransportFactory(resolver, logger),
+		amqp.NewTransportFactory(logger, resolver),
+		inmemory.NewTransportFactory(logger, resolver),
+		sync.NewTransportFactory(logger, busLocator),
 	)
 
 	return &Builder{
@@ -48,9 +52,9 @@ func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 		resolver:          resolver,
 		transportFactory:  tf,
 		handlersLocator:   handler.NewHandlerLocator(),
-		transportLocator:  transport.NewLocator(),
+		senderLocator:     transport.NewSenderLocator(),
 		middlewareLocator: middleware.NewMiddlewareLocator(),
-		busLocator:        bus.NewLocator(),
+		busLocator:        busLocator,
 		eventDispatcher:   event.NewEventDispatcher(logger),
 		logger:            logger,
 	}
@@ -91,25 +95,16 @@ func (b *Builder) RegisterListener(event any, listener any) {
 }
 
 func (b *Builder) Build() (api.Messenger, error) {
-	router := routing.NewRouter()
-	for msgTypeStr, transportName := range b.cfg.Routing {
-		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve message type '%s' in routing configuration: %w", msgTypeStr, err)
-		}
-		router.RouteTypeTo(t, transportName)
-	}
-
 	b.registerStamps()
 
-	if err := b.setupBuses(router); err != nil {
+	if err := b.setupBuses(); err != nil {
 		return nil, err
 	}
 
-	return b.createMessenger(router)
+	return b.createMessenger()
 }
 
-func (b *Builder) setupBuses(router api.Router) error {
+func (b *Builder) setupBuses() error {
 	for name, cfg := range b.cfg.Buses {
 		var chain []api.Middleware
 
@@ -124,9 +119,9 @@ func (b *Builder) setupBuses(router api.Router) error {
 		chain = append(chain, implementation.NewAddBusNameMiddleware(name))
 		chain = append(
 			chain,
-			implementation.NewSendMessageMiddleware(router, b.transportLocator, b.eventDispatcher, b.logger),
+			implementation.NewSendMessageMiddleware(b.logger, b.senderLocator, b.eventDispatcher),
 		)
-		chain = append(chain, implementation.NewHandleMessageMiddleware(b.handlersLocator, b.logger))
+		chain = append(chain, implementation.NewHandleMessageMiddleware(b.logger, b.handlersLocator))
 
 		createNewBus := bus.NewBus(chain...)
 
@@ -139,7 +134,48 @@ func (b *Builder) setupBuses(router api.Router) error {
 	return nil
 }
 
-func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
+func (b *Builder) createMessenger() (api.Messenger, error) {
+	router, err := b.setupRouting()
+	if err != nil {
+		return nil, err
+	}
+
+	busMap := b.createBusMap()
+	handlerManager := b.createHandlerManager(busMap)
+	manager := transport.NewManager(b.logger, handlerManager, b.eventDispatcher)
+
+	createdTransports, transportNames, err := b.createTransports(manager)
+	if err != nil {
+		return nil, err
+	}
+
+	b.setupFallbackTransports(transportNames)
+	b.setupRetryListeners(createdTransports)
+
+	defaultBus, ok := b.busLocator.Get(b.cfg.DefaultBus)
+	if !ok {
+		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
+	}
+
+	return messenger.NewMessenger(b.cfg.DefaultBus, manager, b.busLocator, router), nil
+}
+
+func (b *Builder) setupRouting() (api.Router, error) {
+	router := routing.NewRouter()
+
+	for msgTypeStr, transportName := range b.cfg.Routing {
+		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve message type '%s' in routing configuration: %w", msgTypeStr, err)
+		}
+		router.RouteTypeTo(t, transportName)
+		b.senderLocator.RegisterMessageType(t, []string{transportName})
+	}
+
+	return router, nil
+}
+
+func (b *Builder) createBusMap() map[reflect.Type]string {
 	busMap := make(map[reflect.Type]string)
 	for _, h := range b.handlersLocator.GetAll() {
 		busName := h.BusName
@@ -149,7 +185,11 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 		busMap[h.InputType] = busName
 	}
 
-	handlerManager := func(ctx context.Context, env api.Envelope) error {
+	return busMap
+}
+
+func (b *Builder) createHandlerManager(busMap map[reflect.Type]string) func(context.Context, api.Envelope) error {
+	return func(ctx context.Context, env api.Envelope) error {
 		msgType := reflect.TypeOf(env.Message())
 		busName, ok := busMap[msgType]
 		if !ok {
@@ -165,27 +205,47 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 
 		return err
 	}
+}
 
-	manager := transport.NewManager(handlerManager, b.eventDispatcher, b.logger)
+func (b *Builder) createTransports(manager *transport.Manager) (map[string]api.Transport, []string, error) {
+	var transportNames []string
+	createdTransports := make(map[string]api.Transport)
+
+	b.createdSyncTransport(createdTransports)
 
 	for name, tCfg := range b.cfg.Transports {
 		tr, err := b.transportFactory.CreateTransport(name, tCfg)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create transport '%s': %w", name, err)
+			return nil, nil, fmt.Errorf("failed to create transport '%s': %w", name, err)
 		}
 
-		manager.AddTransport(tr)
+		createdTransports[name] = tr
+	}
 
-		errTransportLocator := b.transportLocator.Register(name, tr)
+	for nameTransport, tr := range createdTransports {
+		manager.AddTransport(tr)
+		transportNames = append(transportNames, nameTransport)
+
+		errTransportLocator := b.senderLocator.Register(nameTransport, tr)
 		if errTransportLocator != nil {
-			return nil, fmt.Errorf("failed to register transport '%s': %w", name, errTransportLocator)
+			return nil, nil, fmt.Errorf("failed to register transport '%s': %w", nameTransport, errTransportLocator)
 		}
 	}
 
-	for name, tCfg := range b.cfg.Transports {
-		tr := b.transportLocator.GetTransport(name)
+	return createdTransports, transportNames, nil
+}
 
-		if retryable, ok := tr.(api.RetryableTransport); ok && tCfg.RetryStrategy != nil {
+func (b *Builder) setupFallbackTransports(transportNames []string) {
+	if len(b.cfg.Routing) == 0 && len(transportNames) > 0 {
+		b.senderLocator.SetFallback(transportNames)
+	}
+}
+
+func (b *Builder) setupRetryListeners(createdTransports map[string]api.Transport) {
+	for name, tCfg := range b.cfg.Transports {
+		t := createdTransports[name]
+
+		if retryable, ok := t.(api.RetryableTransport); ok && tCfg.RetryStrategy != nil {
 			strategy := retry.NewMultiplierRetryStrategy(
 				tCfg.RetryStrategy.MaxRetries,
 				tCfg.RetryStrategy.Delay,
@@ -195,23 +255,29 @@ func (b *Builder) createMessenger(router api.Router) (api.Messenger, error) {
 
 			var failureTransport api.Transport
 			if b.cfg.FailureTransport != "" {
-				failureTransport = b.transportLocator.GetTransport(b.cfg.FailureTransport)
+				if ft, exists := createdTransports[b.cfg.FailureTransport]; exists {
+					failureTransport = ft
+				}
 			}
 
-			lst := listener.NewSendFailedMessageForRetryListener(retryable, failureTransport, strategy, b.logger)
+			lst := listener.NewSendFailedMessageForRetryListener(b.logger, retryable, failureTransport, strategy)
 			b.eventDispatcher.AddListener(event.SendFailedMessageEvent{}, lst)
 		}
 	}
-
-	defaultBus, ok := b.busLocator.Get(b.cfg.DefaultBus)
-	if !ok {
-		return nil, fmt.Errorf("default_bus %q not found", defaultBus)
-	}
-
-	return messenger.NewMessenger(b.cfg.DefaultBus, manager, b.busLocator, router), nil
 }
 
 func (b *Builder) registerStamps() {
 	b.resolver.RegisterStamp(stamps.BusNameStamp{})
 	b.resolver.RegisterStamp(stamps.RedeliveryStamp{})
+}
+
+func (b *Builder) createdSyncTransport(createdTransports map[string]api.Transport) {
+	cfg := config.TransportConfig{
+		DSN:     "sync://",
+		Options: config.OptionsConfig{},
+	}
+
+	if syncTransport, err := b.transportFactory.CreateTransport("sync", cfg); err == nil {
+		createdTransports["sync"] = syncTransport
+	}
 }

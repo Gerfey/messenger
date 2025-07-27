@@ -51,7 +51,7 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.L
 			return nil, setupErr
 		}
 
-		logger.Info("AMQP transport setup completed", "transport", cfg.Name)
+		logger.Debug("AMQP transport setup completed", "transport", cfg.Name)
 	}
 
 	return transport, nil
@@ -114,7 +114,13 @@ func (t *Transport) setup() error {
 			return fmt.Errorf("declare queue: %w", err)
 		}
 
-		for _, bindingKey := range queueCfg.BindingKeys {
+		bindingKeys := queueCfg.BindingKeys
+
+		if len(bindingKeys) == 0 {
+			bindingKeys = []string{""}
+		}
+
+		for _, bindingKey := range bindingKeys {
 			bindErr := ch.QueueBind(
 				queueName,
 				bindingKey,
