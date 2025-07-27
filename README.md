@@ -68,7 +68,7 @@ buses:
 ```go
 cfg, errConfig := config.LoadConfig("messenger.yaml")
 if errConfig != nil {
-    l.Error("ERROR load config", "error", errConfig)
+    fmt.Println("ERROR load config", "error", errConfig)
     return
 }
 
