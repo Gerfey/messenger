@@ -2,6 +2,7 @@ package implementation
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/gerfey/messenger/api"
@@ -11,75 +12,77 @@ import (
 )
 
 type SendMessageMiddleware struct {
-	router           api.Router
-	transportLocator api.TransportLocator
-	eventDispatcher  api.EventDispatcher
-	logger           *slog.Logger
+	logger          *slog.Logger
+	senderLocator   api.SenderLocator
+	eventDispatcher api.EventDispatcher
 }
 
 func NewSendMessageMiddleware(
-	router api.Router,
-	transportLocator api.TransportLocator,
-	eventDispatcher api.EventDispatcher,
 	logger *slog.Logger,
+	senderLocator api.SenderLocator,
+	eventDispatcher api.EventDispatcher,
 ) api.Middleware {
 	return &SendMessageMiddleware{
-		router:           router,
-		transportLocator: transportLocator,
-		eventDispatcher:  eventDispatcher,
-		logger:           logger,
+		logger:          logger,
+		senderLocator:   senderLocator,
+		eventDispatcher: eventDispatcher,
 	}
 }
 
 func (m *SendMessageMiddleware) Handle(ctx context.Context, env api.Envelope, next api.NextFunc) (api.Envelope, error) {
 	if _, ok := envelope.LastStampOf[stamps.ReceivedStamp](env); ok {
+		m.logger.DebugContext(ctx, "received message from transport")
+
 		return next(ctx, env)
 	}
 
 	msg := env.Message()
-	transportNames := m.router.GetTransportFor(msg)
 
-	if len(transportNames) == 0 {
-		m.logger.WarnContext(ctx, "no transports configured for message", "message_type", msg)
+	senders := m.senderLocator.GetSenders(env)
 
-		return next(ctx, env)
+	if len(senders) == 0 {
+		m.logger.WarnContext(ctx, "no senders configured for message", "message_type", msg)
+
+		return env, fmt.Errorf("no senders configured for message %T", msg)
 	}
 
-	m.logger.DebugContext(ctx, "sending message to transports",
-		"message_type", msg,
-		"transports", transportNames)
+	var isSent = false
 
-	errDispatcher := m.eventDispatcher.Dispatch(ctx, &event.SendMessageToTransportsEvent{
-		Ctx:            ctx,
-		Envelope:       env,
-		TransportNames: transportNames,
-	})
-	if errDispatcher != nil {
-		m.logger.ErrorContext(ctx, "failed to dispatch send event", "error", errDispatcher)
+	for _, sender := range senders {
+		m.logger.DebugContext(ctx, "sending message to sender",
+			"message_type", msg,
+			"sender", sender.Name())
 
-		return nil, errDispatcher
-	}
+		errDispatcher := m.eventDispatcher.Dispatch(ctx, &event.SendMessageToTransportsEvent{
+			Ctx:      ctx,
+			Envelope: env,
+			Senders:  senders,
+		})
+		if errDispatcher != nil {
+			m.logger.ErrorContext(ctx, "failed to dispatch send event", "error", errDispatcher)
 
-	for _, name := range transportNames {
-		sender := m.transportLocator.GetTransport(name)
-		if sender == nil {
-			m.logger.ErrorContext(ctx, "transport not found", "transport", name)
-
-			continue
+			return nil, errDispatcher
 		}
+
+		env = env.WithStamp(stamps.SentStamp{SenderName: sender.Name()})
 
 		err := sender.Send(ctx, env)
 		if err != nil {
-			m.logger.ErrorContext(ctx, "failed to send message to transport",
-				"transport", name,
+			m.logger.ErrorContext(ctx, "failed to send message to sender",
+				"sender", sender.Name(),
 				"error", err)
 
 			return nil, err
 		}
-		env = env.WithStamp(stamps.SentStamp{Transport: name})
 
-		m.logger.DebugContext(ctx, "message sent successfully", "transport", name)
+		isSent = true
+
+		m.logger.DebugContext(ctx, "message sent successfully", "sender", sender.Name())
 	}
 
-	return next(ctx, env)
+	if !isSent {
+		return next(ctx, env)
+	}
+
+	return env, nil
 }

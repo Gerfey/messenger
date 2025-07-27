@@ -9,14 +9,14 @@ import (
 )
 
 type TransportFactory struct {
-	resolver api.TypeResolver
 	logger   *slog.Logger
+	resolver api.TypeResolver
 }
 
-func NewTransportFactory(resolver api.TypeResolver, logger *slog.Logger) api.TransportFactory {
+func NewTransportFactory(logger *slog.Logger, resolver api.TypeResolver) api.TransportFactory {
 	return &TransportFactory{
-		resolver: resolver,
 		logger:   logger,
+		resolver: resolver,
 	}
 }
 

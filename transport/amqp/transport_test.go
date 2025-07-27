@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	amqp091 "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/assert"
@@ -141,6 +142,10 @@ func TestTransport_Setup_WithMocks(t *testing.T) {
 }
 
 func TestTransport_Integration_Methods(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
 	cfg := amqp.TransportConfig{
 		Name: "test-transport",
 		DSN:  "amqp://localhost",
@@ -153,20 +158,25 @@ func TestTransport_Integration_Methods(t *testing.T) {
 	resolver.RegisterMessage(&helpers.TestMessage{})
 	logger, _ := helpers.NewFakeLogger()
 
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
 	transport, err := amqp.NewTransport(cfg, resolver, logger)
 	if err != nil {
-		t.Skip("Skipping integration test - requires AMQP connection")
+		t.Skip("Skipping integration test - requires AMQP connection:", err)
 
 		return
 	}
 
-	ctx := t.Context()
 	msg := &helpers.TestMessage{ID: "123", Content: "test message"}
 	env := envelope.NewEnvelope(msg)
 
 	t.Run("send method delegates to publisher", func(t *testing.T) {
-		sendErr := transport.Send(ctx, env)
-		assert.Error(t, sendErr)
+		sendCtx, sendCancel := context.WithTimeout(ctx, 2*time.Second)
+		defer sendCancel()
+
+		sendErr := transport.Send(sendCtx, env)
+		assert.NoError(t, sendErr)
 	})
 
 	t.Run("receive method delegates to consumer", func(t *testing.T) {
@@ -174,7 +184,10 @@ func TestTransport_Integration_Methods(t *testing.T) {
 			return nil
 		}
 
-		receiveErr := transport.Receive(ctx, handler)
+		receiveCtx, receiveCancel := context.WithTimeout(ctx, 2*time.Second)
+		defer receiveCancel()
+
+		receiveErr := transport.Receive(receiveCtx, handler)
 		assert.Error(t, receiveErr)
 	})
 
@@ -186,8 +199,12 @@ func TestTransport_Integration_Methods(t *testing.T) {
 			return
 		}
 
-		retryErr := retryableTransport.Retry(ctx, env)
-		assert.Error(t, retryErr)
+		retryCtx, retryCancel := context.WithTimeout(ctx, 2*time.Second)
+		defer retryCancel()
+
+		retryErr := retryableTransport.Retry(retryCtx, env)
+
+		assert.NoError(t, retryErr)
 	})
 }
 

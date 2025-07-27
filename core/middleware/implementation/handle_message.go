@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/core/stamps"
 )
 
@@ -16,14 +15,14 @@ const (
 )
 
 type HandleMessageMiddleware struct {
-	handlersLocator api.HandlerLocator
 	logger          *slog.Logger
+	handlersLocator api.HandlerLocator
 }
 
-func NewHandleMessageMiddleware(handlersLocator api.HandlerLocator, logger *slog.Logger) api.Middleware {
+func NewHandleMessageMiddleware(logger *slog.Logger, handlersLocator api.HandlerLocator) api.Middleware {
 	return &HandleMessageMiddleware{
-		handlersLocator: handlersLocator,
 		logger:          logger,
+		handlersLocator: handlersLocator,
 	}
 }
 
@@ -32,10 +31,6 @@ func (h *HandleMessageMiddleware) Handle(
 	env api.Envelope,
 	next api.NextFunc,
 ) (api.Envelope, error) {
-	if _, ok := envelope.LastStampOf[stamps.SentStamp](env); ok {
-		return env, nil
-	}
-
 	msg := env.Message()
 	msgType := reflect.TypeOf(msg)
 
