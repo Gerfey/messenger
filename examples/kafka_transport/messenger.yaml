@@ -1,0 +1,19 @@
+default_bus: default
+
+buses:
+  default: ~
+
+transports:
+  kafka:
+    dsn: "kafka://localhost:29092/my-topic?group=my-group&offset=earliest"
+    retry_strategy:
+      max_retries: 5
+      delay: 500ms
+      multiplier: 2
+      max_delay: 5s
+    options:
+      consumer_pool_size: 3
+      commit_interval: 500ms
+
+routing:
+  message.ExampleHelloMessage: kafka

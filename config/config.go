@@ -38,6 +38,7 @@ type RetryStrategyConfig struct {
 type OptionsConfig struct {
 	AutoSetup        bool             `yaml:"auto_setup"         default:"true"`
 	ConsumerPoolSize int              `yaml:"consumer_pool_size" default:"10"`
+	CommitInterval   time.Duration    `yaml:"commit_interval"`
 	Exchange         ExchangeConfig   `yaml:"exchange"`
 	Queues           map[string]Queue `yaml:"queues"`
 }
