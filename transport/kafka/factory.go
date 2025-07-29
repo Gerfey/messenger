@@ -3,7 +3,6 @@ package kafka
 import (
 	"fmt"
 	"log/slog"
-	"net/url"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -37,13 +36,6 @@ func (t *TransportFactory) Create(name string, dsn string, options []byte) (api.
 	if err := yaml.Unmarshal(options, &optsConfig); err != nil {
 		return nil, fmt.Errorf("kafka: unmarshal options: %w", err)
 	}
-
-	u, err := url.Parse(dsn)
-	if err != nil {
-		return nil, fmt.Errorf("kafka: failed to parse dsn: %w", err)
-	}
-
-	optsConfig.Brokers = strings.Split(u.Host, ",")
 
 	tCfg := TransportConfig{
 		Name:    name,

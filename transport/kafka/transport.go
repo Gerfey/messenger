@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 
 	"github.com/gerfey/messenger/api"
 	"github.com/gerfey/messenger/serializer"
@@ -19,7 +21,14 @@ type Transport struct {
 }
 
 func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
-	conn, err := NewConnection(cfg.Options.Brokers)
+	u, err := url.Parse(cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("kafka: failed to parse dsn: %w", err)
+	}
+
+	brokers := strings.Split(u.Host, ",")
+
+	conn, err := NewConnection(brokers)
 	if err != nil {
 		logger.Error("failed to connect to Kafka brokers", "error", err)
 
