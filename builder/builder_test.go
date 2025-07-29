@@ -25,9 +25,9 @@ func TestNewBuilder(t *testing.T) {
 			Transports: map[string]config.TransportConfig{
 				"inmemory": {
 					DSN: "",
-					Options: config.OptionsConfig{
-						AutoSetup:        true,
-						ConsumerPoolSize: 10,
+					Options: map[string]any{
+						"auto_setup":         true,
+						"consumer_pool_size": 10,
 					},
 				},
 			},
@@ -210,9 +210,9 @@ func TestBuilder_RegisterTransportFactory(t *testing.T) {
 			Transports: map[string]config.TransportConfig{
 				"inmemory": {
 					DSN: "in-memory://test",
-					Options: config.OptionsConfig{
-						AutoSetup:        true,
-						ConsumerPoolSize: 10,
+					Options: map[string]any{
+						"auto_setup":         true,
+						"consumer_pool_size": 10,
 					},
 				},
 			},
@@ -265,9 +265,9 @@ func TestBuilder_Build_Errors(t *testing.T) {
 			Transports: map[string]config.TransportConfig{
 				"inmemory": {
 					DSN: "in-memory://test",
-					Options: config.OptionsConfig{
-						AutoSetup:        true,
-						ConsumerPoolSize: 10,
+					Options: map[string]any{
+						"auto_setup":         true,
+						"consumer_pool_size": 10,
 					},
 				},
 			},
@@ -296,9 +296,9 @@ func TestBuilder_Build_Errors(t *testing.T) {
 			Transports: map[string]config.TransportConfig{
 				"inmemory": {
 					DSN: "in-memory://test",
-					Options: config.OptionsConfig{
-						AutoSetup:        true,
-						ConsumerPoolSize: 10,
+					Options: map[string]any{
+						"auto_setup":         true,
+						"consumer_pool_size": 10,
 					},
 				},
 			},
@@ -331,9 +331,9 @@ func TestBuilder_Build_Success(t *testing.T) {
 			Transports: map[string]config.TransportConfig{
 				"inmemory": {
 					DSN: "in-memory://test",
-					Options: config.OptionsConfig{
-						AutoSetup:        true,
-						ConsumerPoolSize: 10,
+					Options: map[string]any{
+						"auto_setup":         true,
+						"consumer_pool_size": 10,
 					},
 				},
 			},
@@ -377,9 +377,9 @@ func TestBuilder_Build_Success(t *testing.T) {
 			Transports: map[string]config.TransportConfig{
 				"inmemory": {
 					DSN: "in-memory://test",
-					Options: config.OptionsConfig{
-						AutoSetup:        true,
-						ConsumerPoolSize: 10,
+					Options: map[string]any{
+						"auto_setup":         true,
+						"consumer_pool_size": 10,
 					},
 				},
 			},

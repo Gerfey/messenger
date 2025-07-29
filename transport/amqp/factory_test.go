@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gerfey/messenger/tests/mocks"
 	"github.com/gerfey/messenger/transport/amqp"
@@ -103,7 +104,10 @@ func TestTransportFactory_Create(t *testing.T) {
 		},
 	}
 
-	_, err := factory.Create(name, dsn, options)
+	optionsBytes, err := yaml.Marshal(options)
+	require.NoError(t, err)
+
+	_, err = factory.Create(name, dsn, optionsBytes)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to connect")

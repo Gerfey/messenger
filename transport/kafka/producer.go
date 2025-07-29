@@ -47,8 +47,8 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		Time:    time.Now(),
 	}
 
-	if err := p.writer.WriteMessages(ctx, msg); err != nil {
-		return fmt.Errorf("producer failed to write messages: %w", err)
+	if writeErr := p.writer.WriteMessages(ctx, msg); writeErr != nil {
+		return fmt.Errorf("producer failed to write messages: %w", writeErr)
 	}
 
 	return nil

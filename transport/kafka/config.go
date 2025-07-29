@@ -16,5 +16,5 @@ type OptionsConfig struct {
 	Offset           string        `yaml:"offset"             default:"latest"`
 	Group            string        `yaml:"group"              default:"group"`
 	Topic            string        `yaml:"topic"              default:"topic"`
-	Brokers          []string
+	Brokers          []string      `yaml:"brokers"`
 }

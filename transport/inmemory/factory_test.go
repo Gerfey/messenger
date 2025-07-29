@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"gopkg.in/yaml.v3"
 
-	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/tests/mocks"
 	"github.com/gerfey/messenger/transport/inmemory"
 )
@@ -79,9 +79,12 @@ func TestTransportFactory_Create(t *testing.T) {
 
 	name := "test-inmemory"
 	dsn := "in-memory://test"
-	options := config.OptionsConfig{}
+	options := map[string]any{}
 
-	transport, err := factory.Create(name, dsn, options)
+	optionsBytes, err := yaml.Marshal(options)
+	require.NoError(t, err)
+
+	transport, err := factory.Create(name, dsn, optionsBytes)
 
 	require.NoError(t, err)
 	assert.NotNil(t, transport)

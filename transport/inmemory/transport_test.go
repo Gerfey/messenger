@@ -30,7 +30,7 @@ func TestNewTransport(t *testing.T) {
 		transport := inmemory.NewTransport("in-memory")
 
 		require.NotNil(t, transport)
-		assert.Empty(t, transport.Name())
+		assert.Equal(t, "in-memory", transport.Name())
 	})
 }
 

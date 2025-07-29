@@ -10,6 +10,16 @@ import (
 	"github.com/gerfey/messenger/core/stamps"
 )
 
+const (
+	minBytes          = 10e3 // 10KB
+	maxBytes          = 10e6 // 10MB
+	sessionTimeout    = 10 * time.Second
+	rebalanceTimeout  = 5 * time.Second
+	heartbeatInterval = 2 * time.Second
+	defaultPoolSize   = 10
+	readLagInterval   = -1
+)
+
 type Consumer struct {
 	cfg        TransportConfig
 	serializer api.Serializer
@@ -29,14 +39,14 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 		Topic:           c.cfg.Options.Topic,
 		StartOffset:     c.startOffset(c.cfg.Options.Offset),
 		CommitInterval:  c.cfg.Options.CommitInterval,
-		MinBytes:        10e3, // 10KB
-		MaxBytes:        10e6, // 10MB
-		ReadLagInterval: -1,
+		MinBytes:        minBytes,
+		MaxBytes:        maxBytes,
+		ReadLagInterval: readLagInterval,
 
-		SessionTimeout:    10 * time.Second,
-		RebalanceTimeout:  5 * time.Second,
-		HeartbeatInterval: 2 * time.Second,
-		MaxWait:           1 * time.Second,
+		SessionTimeout:    sessionTimeout,
+		RebalanceTimeout:  rebalanceTimeout,
+		HeartbeatInterval: heartbeatInterval,
+		MaxWait:           time.Second,
 	})
 	defer r.Close()
 
@@ -57,11 +67,11 @@ func (c *Consumer) startWorkerPool(
 ) {
 	poolSize := c.cfg.Options.ConsumerPoolSize
 	if poolSize <= 0 {
-		poolSize = 10
+		poolSize = defaultPoolSize
 	}
 
-	for i := 0; i < poolSize; i++ {
-		go func(workerID int) {
+	for i := range make([]struct{}, poolSize) {
+		go func(_ int) {
 			for j := range jobs {
 				c.handleMessage(ctx, j.r, j.msg, handler)
 			}
@@ -106,7 +116,7 @@ func (c *Consumer) handleMessage(
 
 	env = env.WithStamp(stamps.ReceivedStamp{Transport: c.cfg.Name})
 
-	if err := handler(ctx, env); err != nil {
+	if handlerErr := handler(ctx, env); handlerErr != nil {
 		_ = r.CommitMessages(ctx, msg)
 
 		return
@@ -124,13 +134,15 @@ func (c *Consumer) startOffset(offset string) int64 {
 	if offset == "earliest" {
 		return kafka.FirstOffset
 	}
+
 	return kafka.LastOffset
 }
 
-func (c *Consumer) headerMap(hdrs []kafka.Header) map[string]string {
-	m := make(map[string]string, len(hdrs))
-	for _, h := range hdrs {
+func (c *Consumer) headerMap(headers []kafka.Header) map[string]string {
+	m := make(map[string]string, len(headers))
+	for _, h := range headers {
 		m[h.Key] = string(h.Value)
 	}
+
 	return m
 }
