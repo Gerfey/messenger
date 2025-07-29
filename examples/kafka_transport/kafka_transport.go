@@ -10,10 +10,6 @@ import (
 	"github.com/gerfey/messenger/examples/kafka_transport/message"
 )
 
-const (
-	waitDurationSeconds = 20
-)
-
 func main() {
 	ctx := context.Background()
 

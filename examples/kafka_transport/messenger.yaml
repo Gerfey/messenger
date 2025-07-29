@@ -1,19 +1,33 @@
 default_bus: default
+failure_transport: failed_messages
 
 buses:
   default: ~
 
 transports:
   kafka:
-    dsn: "kafka://localhost:29092/my-topic?group=my-group&offset=earliest"
+    dsn: "kafka://localhost:29092/"
     retry_strategy:
       max_retries: 5
       delay: 500ms
       multiplier: 2
       max_delay: 5s
     options:
+      topic: my-topic
+      group: my-group
+      offset: earliest
       consumer_pool_size: 3
       commit_interval: 500ms
+
+  failed_messages:
+    dsn: "amqp://guest:guest@localhost:5672/"
+    options:
+      auto_setup: true
+      exchange:
+        name: failed_exchange
+        type: fanout
+      queues:
+        failed_messages_queue: ~
 
 routing:
   message.ExampleHelloMessage: kafka

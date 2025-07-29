@@ -12,17 +12,17 @@ import (
 
 type Producer struct {
 	writer     *kafka.Writer
-	cfg        *TransportConfig
+	cfg        TransportConfig
 	serializer api.Serializer
 }
 
-func NewProducer(cfg *TransportConfig, ser api.Serializer) (*Producer, error) {
+func NewProducer(cfg TransportConfig, ser api.Serializer) (*Producer, error) {
 	return &Producer{
 		cfg:        cfg,
 		serializer: ser,
 		writer: &kafka.Writer{
-			Addr:         kafka.TCP(cfg.Brokers...),
-			Topic:        cfg.Topic,
+			Addr:         kafka.TCP(cfg.Options.Brokers...),
+			Topic:        cfg.Options.Topic,
 			RequiredAcks: kafka.RequireAll,
 			Balancer:     &kafka.LeastBytes{},
 			Async:        false,

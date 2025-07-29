@@ -3,10 +3,13 @@ package kafka
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 
+	"github.com/creasty/defaults"
+	"gopkg.in/yaml.v3"
+
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 )
 
 type TransportFactory struct {
@@ -25,16 +28,28 @@ func (t *TransportFactory) Supports(dsn string) bool {
 	return strings.HasPrefix(dsn, "kafka://")
 }
 
-func (t *TransportFactory) Create(name string, dsn string, options config.OptionsConfig) (api.Transport, error) {
-	cfg, err := NewConfig(name, dsn, options)
-	if err != nil {
-		return nil, fmt.Errorf("create config kafka: %w", err)
+func (t *TransportFactory) Create(name string, dsn string, options []byte) (api.Transport, error) {
+	var optsConfig OptionsConfig
+	if err := defaults.Set(&optsConfig); err != nil {
+		return nil, fmt.Errorf("kafka: set defaults: %w", err)
 	}
 
-	transport, err := NewTransport(cfg, t.resolver, t.logger)
-	if err != nil {
-		return nil, fmt.Errorf("create kafka transport: %w", err)
+	if err := yaml.Unmarshal(options, &optsConfig); err != nil {
+		return nil, fmt.Errorf("kafka: unmarshal options: %w", err)
 	}
 
-	return transport, nil
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("kafka: failed to parse dsn: %w", err)
+	}
+
+	optsConfig.Brokers = strings.Split(u.Host, ",")
+
+	tCfg := TransportConfig{
+		Name:    name,
+		DSN:     dsn,
+		Options: optsConfig,
+	}
+
+	return NewTransport(tCfg, t.resolver, t.logger)
 }

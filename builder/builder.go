@@ -275,8 +275,7 @@ func (b *Builder) registerStamps() {
 
 func (b *Builder) createdSyncTransport(createdTransports map[string]api.Transport) {
 	cfg := config.TransportConfig{
-		DSN:     "sync://",
-		Options: config.OptionsConfig{},
+		DSN: "sync://",
 	}
 
 	if syncTransport, err := b.transportFactory.CreateTransport("sync", cfg); err == nil {

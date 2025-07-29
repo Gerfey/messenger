@@ -11,11 +11,11 @@ import (
 )
 
 type Consumer struct {
-	cfg        *TransportConfig
+	cfg        TransportConfig
 	serializer api.Serializer
 }
 
-func NewConsumer(cfg *TransportConfig, ser api.Serializer) *Consumer {
+func NewConsumer(cfg TransportConfig, ser api.Serializer) *Consumer {
 	return &Consumer{
 		cfg:        cfg,
 		serializer: ser,
@@ -24,11 +24,11 @@ func NewConsumer(cfg *TransportConfig, ser api.Serializer) *Consumer {
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:         c.cfg.Brokers,
-		GroupID:         c.cfg.GroupID,
-		Topic:           c.cfg.Topic,
-		StartOffset:     c.startOffset(c.cfg.Offset),
-		CommitInterval:  c.cfg.CommitInterval,
+		Brokers:         c.cfg.Options.Brokers,
+		GroupID:         c.cfg.Options.Group,
+		Topic:           c.cfg.Options.Topic,
+		StartOffset:     c.startOffset(c.cfg.Options.Offset),
+		CommitInterval:  c.cfg.Options.CommitInterval,
 		MinBytes:        10e3, // 10KB
 		MaxBytes:        10e6, // 10MB
 		ReadLagInterval: -1,
@@ -50,8 +50,12 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 	return ctx.Err()
 }
 
-func (c *Consumer) startWorkerPool(ctx context.Context, jobs chan job, handler func(context.Context, api.Envelope) error) {
-	poolSize := c.cfg.ConsumerPoolSize
+func (c *Consumer) startWorkerPool(
+	ctx context.Context,
+	jobs chan job,
+	handler func(context.Context, api.Envelope) error,
+) {
+	poolSize := c.cfg.Options.ConsumerPoolSize
 	if poolSize <= 0 {
 		poolSize = 10
 	}

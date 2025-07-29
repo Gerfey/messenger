@@ -10,14 +10,14 @@ import (
 )
 
 type Transport struct {
-	cfg        *TransportConfig
+	cfg        TransportConfig
 	producer   *Producer
 	consumer   *Consumer
 	serializer api.Serializer
 	logger     *slog.Logger
 }
 
-func NewTransport(cfg *TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
+func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
 	ser := serializer.NewSerializer(resolver)
 
 	producer, err := NewProducer(cfg, ser)

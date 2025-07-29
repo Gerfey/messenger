@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 )
 
 type Factory struct {
@@ -24,6 +23,6 @@ func (f *Factory) Supports(dsn string) bool {
 	return strings.HasPrefix(dsn, "sync://")
 }
 
-func (f *Factory) Create(_ string, _ string, _ config.OptionsConfig) (api.Transport, error) {
+func (f *Factory) Create(_ string, _ string, _ []byte) (api.Transport, error) {
 	return NewTransport(f.locator), nil
 }

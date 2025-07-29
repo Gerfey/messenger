@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/tests/mocks"
 	"github.com/gerfey/messenger/transport/amqp"
 )
@@ -85,16 +84,16 @@ func TestTransportFactory_Create(t *testing.T) {
 	name := "test-amqp"
 
 	dsn := "amqp://guest:guest@non-existent-host:5672/"
-	options := config.OptionsConfig{
+	options := amqp.OptionsConfig{
 		AutoSetup: true,
-		Exchange: config.ExchangeConfig{
+		Exchange: amqp.ExchangeConfig{
 			Name:       "test-exchange",
 			Type:       "direct",
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
 		},
-		Queues: map[string]config.Queue{
+		Queues: map[string]amqp.Queue{
 			"test-queue": {
 				BindingKeys: []string{"test-key"},
 				Durable:     true,
