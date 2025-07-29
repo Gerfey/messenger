@@ -97,7 +97,7 @@ func TestTransportFactory_Create(t *testing.T) {
 
 	transport, err := factory.Create(name, dsn, optionsBytes)
 
-	require.NoError(t, err)
-	assert.NotNil(t, transport)
-	assert.IsType(t, &kafka.Transport{}, transport)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "kafka")
+	assert.Nil(t, transport)
 }

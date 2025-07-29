@@ -23,18 +23,19 @@ const (
 type Consumer struct {
 	cfg        TransportConfig
 	serializer api.Serializer
+	conn       *Connection
 }
 
-func NewConsumer(cfg TransportConfig, ser api.Serializer) *Consumer {
+func NewConsumer(cfg TransportConfig, ser api.Serializer, conn *Connection) *Consumer {
 	return &Consumer{
 		cfg:        cfg,
 		serializer: ser,
+		conn:       conn,
 	}
 }
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
-	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:         c.cfg.Options.Brokers,
+	readerConfig := kafka.ReaderConfig{
 		GroupID:         c.cfg.Options.Group,
 		Topic:           c.cfg.Options.Topic,
 		StartOffset:     c.startOffset(c.cfg.Options.Offset),
@@ -47,7 +48,9 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 		RebalanceTimeout:  rebalanceTimeout,
 		HeartbeatInterval: heartbeatInterval,
 		MaxWait:           time.Second,
-	})
+	}
+
+	r := c.conn.CreateReader(readerConfig)
 	defer r.Close()
 
 	jobs := make(chan job)

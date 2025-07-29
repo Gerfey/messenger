@@ -15,17 +15,25 @@ type Transport struct {
 	consumer   *Consumer
 	serializer api.Serializer
 	logger     *slog.Logger
+	conn       *Connection
 }
 
 func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
+	conn, err := NewConnection(cfg.Options.Brokers)
+	if err != nil {
+		logger.Error("failed to connect to Kafka brokers", "error", err)
+
+		return nil, fmt.Errorf("kafka: %w", err)
+	}
+
 	ser := serializer.NewSerializer(resolver)
 
-	producer, err := NewProducer(cfg, ser)
+	producer, err := NewProducer(cfg, ser, conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka producer: %w", err)
 	}
 
-	consumer := NewConsumer(cfg, ser)
+	consumer := NewConsumer(cfg, ser, conn)
 
 	return &Transport{
 		cfg:        cfg,
@@ -33,6 +41,7 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.L
 		consumer:   consumer,
 		serializer: ser,
 		logger:     logger,
+		conn:       conn,
 	}, nil
 }
 

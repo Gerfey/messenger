@@ -3,11 +3,16 @@ package main
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/gerfey/messenger/builder"
 	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/examples/kafka_transport/handler"
 	"github.com/gerfey/messenger/examples/kafka_transport/message"
+)
+
+const (
+	waitDurationSeconds = 20
 )
 
 func main() {
@@ -57,5 +62,5 @@ func main() {
 		return
 	}
 
-	<-ctx.Done()
+	time.Sleep(waitDurationSeconds * time.Second)
 }
