@@ -23,7 +23,7 @@ func (f *mockFactory) Supports(dsn string) bool {
 	return dsn == f.supportedDSN
 }
 
-func (f *mockFactory) Create(name, _ string, _ config.OptionsConfig) (api.Transport, error) {
+func (f *mockFactory) Create(name, _ string, _ []byte) (api.Transport, error) {
 	if f.createError != nil {
 		return nil, f.createError
 	}
@@ -81,7 +81,7 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
 		tr, err := chain.CreateTransport("test-transport", transportConfig)
@@ -103,7 +103,7 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
 		tr, err := chain.CreateTransport("first-transport", transportConfig)
@@ -119,7 +119,7 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "unknown://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
 		tr, err := chain.CreateTransport("unknown-transport", transportConfig)
@@ -141,7 +141,7 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
 		tr, err := chain.CreateTransport("error-transport", transportConfig)
@@ -156,7 +156,7 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
 		tr, err := chain.CreateTransport("test-transport", transportConfig)
@@ -179,7 +179,7 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "redis://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
 		tr, err := chain.CreateTransport("second-transport", transportConfig)

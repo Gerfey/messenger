@@ -12,20 +12,20 @@ import (
 const sleepDuration = 10 * time.Millisecond
 
 type Transport struct {
-	cfg   TransportConfig
+	name  string
 	queue []api.Envelope
 	lock  sync.Mutex
 }
 
-func NewTransport(cfg TransportConfig) api.Transport {
+func NewTransport(name string) api.Transport {
 	return &Transport{
-		cfg:   cfg,
+		name:  name,
 		queue: make([]api.Envelope, 0),
 	}
 }
 
 func (t *Transport) Name() string {
-	return t.cfg.Name
+	return t.name
 }
 
 func (t *Transport) Send(_ context.Context, env api.Envelope) error {
@@ -56,7 +56,7 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 			t.queue = t.queue[1:]
 			t.lock.Unlock()
 
-			envWithReceivedStamp := env.WithStamp(stamps.ReceivedStamp{Transport: t.cfg.Name})
+			envWithReceivedStamp := env.WithStamp(stamps.ReceivedStamp{Transport: t.name})
 
 			if err := handler(ctx, envWithReceivedStamp); err != nil {
 				return err

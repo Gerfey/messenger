@@ -54,7 +54,7 @@ func TestLoadConfig(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "memory://test-host", cfg.Transports["default"].DSN)
-		assert.Equal(t, 15, cfg.Transports["default"].Options.ConsumerPoolSize)
+		assert.Equal(t, 15, cfg.Transports["default"].Options["consumer_pool_size"])
 		assert.Equal(t, "amqp://guest:guest@localhost:5672/", cfg.Transports["amqp"].DSN)
 		assert.Equal(t, uint(5), cfg.Transports["amqp"].RetryStrategy.MaxRetries)
 	})
@@ -121,8 +121,14 @@ transports:
 
 		require.NoError(t, err)
 		assert.Equal(t, "memory://default", cfg.Transports["default"].DSN)
-		assert.True(t, cfg.Transports["default"].Options.AutoSetup)
-		assert.Equal(t, 10, cfg.Transports["default"].Options.ConsumerPoolSize)
+		autoSetup, ok := cfg.Transports["default"].Options["auto_setup"]
+		if ok && autoSetup != nil {
+			assert.True(t, autoSetup.(bool))
+		}
+		consumerPoolSize, ok := cfg.Transports["default"].Options["consumer_pool_size"]
+		if ok && consumerPoolSize != nil {
+			assert.Equal(t, 10, consumerPoolSize)
+		}
 	})
 
 	t.Run("exchange options default values", func(t *testing.T) {
@@ -139,11 +145,33 @@ transports:
 `), &cfg)
 
 		require.NoError(t, err)
-		assert.Equal(t, "messages", cfg.Transports["amqp"].Options.Exchange.Name)
-		assert.Equal(t, "topic", cfg.Transports["amqp"].Options.Exchange.Type)
-		assert.True(t, cfg.Transports["amqp"].Options.Exchange.Durable)
-		assert.False(t, cfg.Transports["amqp"].Options.Exchange.AutoDelete)
-		assert.False(t, cfg.Transports["amqp"].Options.Exchange.Internal)
+		exchangeOptions, ok := cfg.Transports["amqp"].Options["exchange"].(map[string]any)
+		require.True(t, ok)
+
+		name, ok := exchangeOptions["name"]
+		if ok && name != nil {
+			assert.Equal(t, "messages", name)
+		}
+
+		exchangeType, ok := exchangeOptions["type"]
+		if ok && exchangeType != nil {
+			assert.Equal(t, "topic", exchangeType)
+		}
+
+		durable, ok := exchangeOptions["durable"]
+		if ok && durable != nil {
+			assert.True(t, durable.(bool))
+		}
+
+		autoDelete, ok := exchangeOptions["auto_delete"]
+		if ok && autoDelete != nil {
+			assert.False(t, autoDelete.(bool))
+		}
+
+		internal, ok := exchangeOptions["internal"]
+		if ok && internal != nil {
+			assert.False(t, internal.(bool))
+		}
 	})
 
 	t.Run("queue options default values", func(t *testing.T) {
@@ -162,9 +190,31 @@ transports:
 `), &cfg)
 
 		require.NoError(t, err)
-		assert.Contains(t, cfg.Transports["amqp"].Options.Queues["default"].BindingKeys, "#")
-		assert.True(t, cfg.Transports["amqp"].Options.Queues["default"].Durable)
-		assert.False(t, cfg.Transports["amqp"].Options.Queues["default"].Exclusive)
-		assert.False(t, cfg.Transports["amqp"].Options.Queues["default"].AutoDelete)
+
+		queuesOptions, ok := cfg.Transports["amqp"].Options["queues"].(map[string]any)
+		require.True(t, ok)
+
+		defaultQueue, ok := queuesOptions["default"].(map[string]any)
+		require.True(t, ok)
+
+		bindingKeys, ok := defaultQueue["binding_keys"]
+		if ok && bindingKeys != nil {
+			assert.Contains(t, bindingKeys, "#")
+		}
+
+		durable, ok := defaultQueue["durable"]
+		if ok && durable != nil {
+			assert.True(t, durable.(bool))
+		}
+
+		exclusive, ok := defaultQueue["exclusive"]
+		if ok && exclusive != nil {
+			assert.False(t, exclusive.(bool))
+		}
+
+		autoDelete, ok := defaultQueue["auto_delete"]
+		if ok && autoDelete != nil {
+			assert.False(t, autoDelete.(bool))
+		}
 	})
 }

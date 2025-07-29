@@ -1,4 +1,4 @@
-package inmemory_test
+package kafka_test
 
 import (
 	"log/slog"
@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gerfey/messenger/tests/mocks"
-	"github.com/gerfey/messenger/transport/inmemory"
+	"github.com/gerfey/messenger/transport/kafka"
 )
 
 func TestNewTransportFactory(t *testing.T) {
@@ -20,28 +20,21 @@ func TestNewTransportFactory(t *testing.T) {
 	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
 
-	factory := inmemory.NewTransportFactory(logger, mockResolver)
+	factory := kafka.NewTransportFactory(logger, mockResolver)
 
 	assert.NotNil(t, factory)
-	assert.IsType(t, &inmemory.TransportFactory{}, factory)
+	assert.IsType(t, &kafka.TransportFactory{}, factory)
 }
 
 func TestTransportFactory_Supports(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	logger := slog.Default()
-	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := inmemory.NewTransportFactory(logger, mockResolver)
-
 	testCases := []struct {
 		name     string
 		dsn      string
 		expected bool
 	}{
 		{
-			name:     "supports in-memory dsn",
-			dsn:      "in-memory://test",
+			name:     "supports kafka dsn",
+			dsn:      "kafka://localhost:9092",
 			expected: true,
 		},
 		{
@@ -50,8 +43,8 @@ func TestTransportFactory_Supports(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "does not support empty dsn",
-			dsn:      "",
+			name:     "does not support in-memory dsn",
+			dsn:      "in-memory://",
 			expected: false,
 		},
 		{
@@ -59,10 +52,22 @@ func TestTransportFactory_Supports(t *testing.T) {
 			dsn:      "sync://",
 			expected: false,
 		},
+		{
+			name:     "does not support empty dsn",
+			dsn:      "",
+			expected: false,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			logger := slog.Default()
+			mockResolver := mocks.NewMockTypeResolver(ctrl)
+			factory := kafka.NewTransportFactory(logger, mockResolver)
+
 			result := factory.Supports(tc.dsn)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -75,18 +80,24 @@ func TestTransportFactory_Create(t *testing.T) {
 
 	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := inmemory.NewTransportFactory(logger, mockResolver)
+	factory := kafka.NewTransportFactory(logger, mockResolver)
 
-	name := "test-inmemory"
-	dsn := "in-memory://test"
-	options := map[string]any{}
+	name := "test-kafka"
+	dsn := "kafka://non-existent-host:9092"
+	options := kafka.OptionsConfig{
+		ConsumerPoolSize: 5,
+		Offset:           "earliest",
+		Group:            "test-group",
+		Topic:            "test-topic",
+		CommitInterval:   1000000000,
+	}
 
 	optionsBytes, err := yaml.Marshal(options)
 	require.NoError(t, err)
 
 	transport, err := factory.Create(name, dsn, optionsBytes)
 
-	require.NoError(t, err)
-	assert.NotNil(t, transport)
-	assert.IsType(t, &inmemory.Transport{}, transport)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "kafka")
+	assert.Nil(t, transport)
 }
