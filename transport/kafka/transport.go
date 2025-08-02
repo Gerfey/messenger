@@ -37,12 +37,12 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.L
 
 	ser := serializer.NewSerializer(resolver)
 
-	producer, err := NewProducer(cfg, ser, conn)
+	producer, err := NewProducer(cfg, ser, conn, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka producer: %w", err)
 	}
 
-	consumer := NewConsumer(cfg, ser, conn)
+	consumer := NewConsumer(cfg, ser, conn, logger)
 
 	return &Transport{
 		cfg:        cfg,

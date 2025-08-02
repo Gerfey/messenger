@@ -119,6 +119,8 @@ func (b *Builder) setupBuses() error {
 		}
 
 		chain = append(chain, implementation.NewAddBusNameMiddleware(name))
+		chain = append(chain, implementation.NewAddMessageIDMiddleware())
+
 		chain = append(
 			chain,
 			implementation.NewSendMessageMiddleware(b.logger, b.senderLocator, b.eventDispatcher),
@@ -271,6 +273,7 @@ func (b *Builder) setupRetryListeners(createdTransports map[string]api.Transport
 func (b *Builder) registerStamps() {
 	b.resolver.RegisterStamp(stamps.BusNameStamp{})
 	b.resolver.RegisterStamp(stamps.RedeliveryStamp{})
+	b.resolver.RegisterStamp(stamps.MessageIDStamp{})
 }
 
 func (b *Builder) createdSyncTransport(createdTransports map[string]api.Transport) {

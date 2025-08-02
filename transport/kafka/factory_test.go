@@ -85,11 +85,8 @@ func TestTransportFactory_Create(t *testing.T) {
 	name := "test-kafka"
 	dsn := "kafka://non-existent-host:9092"
 	options := kafka.OptionsConfig{
-		ConsumerPoolSize: 5,
-		Offset:           "earliest",
-		Group:            "test-group",
-		Topic:            "test-topic",
-		CommitInterval:   1000000000,
+		Topics: []string{"test-topic"},
+		Group:  "test-group",
 	}
 
 	optionsBytes, err := yaml.Marshal(options)

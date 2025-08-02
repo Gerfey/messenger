@@ -1,8 +1,6 @@
 package kafka
 
-import (
-	"time"
-)
+import "time"
 
 type TransportConfig struct {
 	Name    string
@@ -11,9 +9,37 @@ type TransportConfig struct {
 }
 
 type OptionsConfig struct {
-	ConsumerPoolSize int           `yaml:"consumer_pool_size" default:"10"`
-	CommitInterval   time.Duration `yaml:"commit_interval"`
-	Offset           string        `yaml:"offset"             default:"latest"`
-	Group            string        `yaml:"group"              default:"group"`
-	Topic            string        `yaml:"topic"              default:"topic"`
+	Topics       []string        `yaml:"topics,omitempty"`
+	Group        string          `yaml:"group"            default:"group"`
+	OffsetConfig OffsetConfig    `yaml:"offset_config"`
+	Commit       CommitConfig    `yaml:"commit"`
+	Pool         PoolConfig      `yaml:"pool"`
+	Rebalance    RebalanceConfig `yaml:"rebalance"`
+	Key          KeyConfig       `yaml:"key"`
+}
+
+type OffsetConfig struct {
+	Type  string `yaml:"type"  default:"latest"` // earliest, latest, specific
+	Value int64  `yaml:"value"`
+}
+
+type CommitConfig struct {
+	Strategy  string        `yaml:"strategy"   default:"auto"`
+	Interval  time.Duration `yaml:"interval"   default:"1s"`
+	BatchSize int           `yaml:"batch_size" default:"100"`
+}
+
+type PoolConfig struct {
+	Size    int  `yaml:"size"     default:"10"`
+	MinSize int  `yaml:"min_size" default:"5"`
+	MaxSize int  `yaml:"max_size" default:"50"`
+	Dynamic bool `yaml:"dynamic"  default:"false"`
+}
+
+type RebalanceConfig struct {
+	Strategy string `yaml:"strategy" default:"range"` // range, roundrobin
+}
+
+type KeyConfig struct {
+	Strategy string `yaml:"strategy" default:"none"` // none, message_id
 }

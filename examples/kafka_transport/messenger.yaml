@@ -13,11 +13,24 @@ transports:
       multiplier: 2
       max_delay: 5s
     options:
-      topic: my-topic
+      topics:
+        - my-topic
       group: my-group
-      offset: earliest
-      consumer_pool_size: 3
-      commit_interval: 500ms
+      offset_config:
+        type: earliest
+      commit:
+        strategy: batch
+        interval: 500ms
+        batch_size: 10
+      pool:
+        size: 3
+        min_size: 2
+        max_size: 10
+        dynamic: true
+      rebalance:
+        strategy: roundrobin
+      key:
+        strategy: message_id
 
   failed_messages:
     dsn: "amqp://guest:guest@localhost:5672/"
