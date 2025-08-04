@@ -7,13 +7,13 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Gerfey/messenger.svg)](https://pkg.go.dev/github.com/Gerfey/messenger)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> ⚠️ `v0.7.0` is a pre-release version — feel free to test and report issues!
+> `v0.7.0` is a pre-release version — feel free to test and report issues!
 
-> 📚 Full documentation available in the [GitHub Wiki](https://github.com/Gerfey/messenger/wiki/Documentation)
+> Full documentation available in the [GitHub Wiki](https://github.com/Gerfey/messenger/wiki/Documentation)
 
 🇷🇺 [Русская версия](README.ru.md)
 
-## ✨ Features
+## Features
 - **Multiple Transports**: AMQP (RabbitMQ), In-Memory (sync)
 - **Middleware Chain**: Extensible middleware system for message processing
 - **Event-Driven**: Built-in event dispatcher for lifecycle hooks
@@ -22,13 +22,13 @@
 - **Stamps System**: Metadata attachment for message tracking
 - **YAML Configuration**: Easy configuration management with `%env(...)%` support
 
-## 📦 Installation
+## Installation
 > Requires Go 1.24+
 ```bash
 go get github.com/gerfey/messenger@v0.7.0
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Define Your Message
 
@@ -83,17 +83,17 @@ bus, _ := m.GetDefaultBus()
 _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
 ```
 
-## 🔍 More Examples
+## More Examples
 
-* ✅ Commands with void return
-* ✅ Queries with return value access
-* ✅ Retry and Dead Letter Queue
-* ✅ Custom Middleware and Transports
-* ✅ Event Listeners and Lifecycle Hooks
+* Commands with void return
+* Queries with return value access
+* Retry and Dead Letter Queue
+* Custom Middleware and Transports
+* Event Listeners and Lifecycle Hooks
 
 > See [Usage Scenarios](https://github.com/Gerfey/messenger/wiki/Usage-Scenarios) for commands, queries, return values and advanced use-cases.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -101,15 +101,15 @@ _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ⚖️ License
+## ⚖License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ⭐️ Support
+## Support
 
 If you find this project useful, please consider starring ⭐️ it and sharing with others!
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Inspired by [Symfony Messenger](https://symfony.com/doc/current/messenger.html)
 - Built with ❤️ for the Go community
