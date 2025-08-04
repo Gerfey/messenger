@@ -39,3 +39,7 @@ type TransportFactory interface {
 type RoutedMessage interface {
 	RoutingKey() string
 }
+
+type Setupable interface {
+	Setup(ctx context.Context) error
+}

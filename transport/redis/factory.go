@@ -1,4 +1,4 @@
-package kafka
+package redis
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func NewTransportFactory(logger *slog.Logger, resolver api.TypeResolver) api.Tra
 }
 
 func (t *TransportFactory) Supports(dsn string) bool {
-	return strings.HasPrefix(dsn, "kafka://")
+	return strings.HasPrefix(dsn, "redis://")
 }
 
 func (t *TransportFactory) Create(name string, dsn string, options []byte) (api.Transport, error) {

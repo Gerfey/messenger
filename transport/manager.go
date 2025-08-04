@@ -53,6 +53,14 @@ func (m *Manager) Start(ctx context.Context, consumeOnly []string) {
 	m.running = true
 
 	for _, t := range m.transports {
+		if s, ok := t.(api.Setupable); ok {
+			if err := s.Setup(ctx); err != nil {
+				m.logger.ErrorContext(ctx, "failed to setup transport", "name", t.Name(), "error", err)
+
+				continue
+			}
+		}
+
 		if !m.stringInSlice(t.Name(), consumeOnly) {
 			continue
 		}

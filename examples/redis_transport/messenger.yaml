@@ -1,0 +1,32 @@
+default_bus: default
+failure_transport: failed_messages
+
+buses:
+  default: ~
+
+transports:
+  redis:
+    dsn: "redis://localhost:6379/0"
+    retry_strategy:
+      max_retries: 5
+      delay: 500ms
+      multiplier: 2
+      max_delay: 5s
+    options:
+      auto_setup: true
+      stream: stream-messages
+      group: worker-group
+      consumer: worker-1
+
+  failed_messages:
+    dsn: "amqp://guest:guest@localhost:5672/"
+    options:
+      auto_setup: true
+      exchange:
+        name: failed_exchange
+        type: fanout
+      queues:
+        failed_messages_queue: ~
+
+routing:
+  message.ExampleHelloMessage: redis

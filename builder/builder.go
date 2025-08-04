@@ -22,6 +22,7 @@ import (
 	"github.com/gerfey/messenger/transport/amqp"
 	"github.com/gerfey/messenger/transport/inmemory"
 	"github.com/gerfey/messenger/transport/kafka"
+	"github.com/gerfey/messenger/transport/redis"
 	"github.com/gerfey/messenger/transport/sync"
 )
 
@@ -47,6 +48,7 @@ func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 		inmemory.NewTransportFactory(logger, resolver),
 		sync.NewTransportFactory(logger, busLocator),
 		kafka.NewTransportFactory(logger, resolver),
+		redis.NewTransportFactory(logger, resolver),
 	)
 
 	return &Builder{

@@ -1,10 +1,9 @@
-package kafka
+package redis
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"strings"
 
 	"github.com/gerfey/messenger/api"
@@ -21,27 +20,16 @@ type Transport struct {
 }
 
 func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
-	u, err := url.Parse(cfg.DSN)
+	conn, err := NewConnection(cfg.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse dsn: %w", err)
-	}
-
-	brokers := strings.Split(u.Host, ",")
-
-	conn, err := NewConnection(brokers)
-	if err != nil {
-		logger.Error("failed to connect to Kafka brokers", "error", err)
+		logger.Error("failed to connect", "error", err)
 
 		return nil, err
 	}
 
 	ser := serializer.NewSerializer(resolver)
 
-	producer, err := NewProducer(cfg, ser, conn, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create kafka producer: %w", err)
-	}
-
+	producer := NewProducer(cfg, ser, conn, logger)
 	consumer := NewConsumer(cfg, ser, conn, logger)
 
 	return &Transport{
@@ -68,4 +56,20 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 
 func (t *Transport) Retry(ctx context.Context, env api.Envelope) error {
 	return t.producer.Send(ctx, env)
+}
+
+func (t *Transport) Setup(ctx context.Context) error {
+	if !t.cfg.Options.AutoSetup {
+		return nil
+	}
+
+	stream := t.cfg.Options.Stream
+	group := t.cfg.Options.Group
+
+	_, err := t.conn.Client().XGroupCreateMkStream(ctx, stream, group, "$").Result()
+	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
+		return fmt.Errorf("failed to create consumer group: %w", err)
+	}
+
+	return nil
 }

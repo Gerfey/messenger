@@ -30,11 +30,11 @@ func (f *TransportFactory) Supports(dsn string) bool {
 func (f *TransportFactory) Create(name string, dsn string, options []byte) (api.Transport, error) {
 	var opts OptionsConfig
 	if err := defaults.Set(&opts); err != nil {
-		return nil, fmt.Errorf("amqp: set defaults: %w", err)
+		return nil, fmt.Errorf("set defaults: %w", err)
 	}
 
 	if err := yaml.Unmarshal(options, &opts); err != nil {
-		return nil, fmt.Errorf("amqp: unmarshal options: %w", err)
+		return nil, fmt.Errorf("unmarshal options: %w", err)
 	}
 
 	cfg := TransportConfig{

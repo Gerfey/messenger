@@ -34,7 +34,7 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.L
 	cons := NewConsumer(conn, cfg, ser)
 	ret := NewRetry(conn, cfg, ser)
 
-	transport := &Transport{
+	return &Transport{
 		cfg:        cfg,
 		publisher:  pub,
 		consumer:   cons,
@@ -42,19 +42,7 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.L
 		serializer: ser,
 		conn:       conn,
 		logger:     logger,
-	}
-
-	if cfg.Options.AutoSetup {
-		if setupErr := transport.setup(); setupErr != nil {
-			logger.Error("failed to setup AMQP transport", "transport", cfg.Name, "error", setupErr)
-
-			return nil, setupErr
-		}
-
-		logger.Debug("AMQP transport setup completed", "transport", cfg.Name)
-	}
-
-	return transport, nil
+	}, nil
 }
 
 func (t *Transport) Name() string {
@@ -73,10 +61,14 @@ func (t *Transport) Retry(ctx context.Context, env api.Envelope) error {
 	return t.retry.Retry(ctx, env)
 }
 
-func (t *Transport) setup() error {
+func (t *Transport) Setup(ctx context.Context) error {
+	if !t.cfg.Options.AutoSetup {
+		return nil
+	}
+
 	ch, err := t.conn.Channel()
 	if err != nil {
-		t.logger.Error("failed to open channel", "error", err)
+		t.logger.ErrorContext(ctx, "failed to open channel", "error", err)
 
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
@@ -94,7 +86,7 @@ func (t *Transport) setup() error {
 		nil,
 	)
 	if err != nil {
-		t.logger.Error("failed to declare exchange", "exchange", t.cfg.Options.Exchange.Name, "error", err)
+		t.logger.ErrorContext(ctx, "failed to declare exchange", "exchange", t.cfg.Options.Exchange.Name, "error", err)
 
 		return fmt.Errorf("failed to declare exchange: %w", err)
 	}
@@ -109,7 +101,7 @@ func (t *Transport) setup() error {
 			nil,
 		)
 		if err != nil {
-			t.logger.Error("declare queue", "queue", queueName, "error", err)
+			t.logger.ErrorContext(ctx, "declare queue", "queue", queueName, "error", err)
 
 			return fmt.Errorf("declare queue: %w", err)
 		}
@@ -129,7 +121,16 @@ func (t *Transport) setup() error {
 				nil,
 			)
 			if bindErr != nil {
-				t.logger.Error("bind queue", "queue", queueName, "binding_key", bindingKey, "error", bindErr)
+				t.logger.ErrorContext(
+					ctx,
+					"bind queue",
+					"queue",
+					queueName,
+					"binding_key",
+					bindingKey,
+					"error",
+					bindErr,
+				)
 
 				return fmt.Errorf("bind queue: %w", bindErr)
 			}
