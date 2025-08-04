@@ -21,6 +21,10 @@ const (
 	heartbeatInterval = 2 * time.Second
 	defaultPoolSize   = 10
 	readLagInterval   = -1
+
+	workerPoolCheckInterval = 30 * time.Second
+	workerBatchSize         = 5
+	errorBackoffDelay       = 100 * time.Millisecond
 )
 
 type Consumer struct {
@@ -138,23 +142,9 @@ func (c *Consumer) startWorkerPool(
 		poolSize = defaultPoolSize
 	}
 
-	for i := 0; i < poolSize; i++ {
+	for range poolSize {
 		c.wg.Add(1)
-		go func() {
-			defer c.wg.Done()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case j, ok := <-jobs:
-					if !ok {
-						return
-					}
-					c.handleMessage(ctx, j.r, j.msg, handler)
-				}
-			}
-		}()
+		go c.startWorker(ctx, jobs, handler)
 	}
 
 	if c.cfg.Options.Pool.Dynamic {
@@ -167,7 +157,7 @@ func (c *Consumer) manageWorkerPool(
 	jobs chan job,
 	handler func(context.Context, api.Envelope) error,
 ) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(workerPoolCheckInterval)
 	defer ticker.Stop()
 
 	currentSize := c.cfg.Options.Pool.Size
@@ -180,31 +170,35 @@ func (c *Consumer) manageWorkerPool(
 			return
 		case <-ticker.C:
 			if len(jobs) > currentSize && currentSize < maxSize {
-				toAdd := min(maxSize-currentSize, 5)
-				for i := 0; i < toAdd; i++ {
-					c.wg.Add(1)
-					go func() {
-						defer c.wg.Done()
+				toAdd := min(maxSize-currentSize, workerBatchSize)
 
-						for {
-							select {
-							case <-ctx.Done():
-								return
-							case j, ok := <-jobs:
-								if !ok {
-									return
-								}
-								c.handleMessage(ctx, j.r, j.msg, handler)
-							}
-						}
-					}()
+				for range toAdd {
+					c.wg.Add(1)
+					go c.startWorker(ctx, jobs, handler)
 				}
+
 				currentSize += toAdd
 				c.logger.DebugContext(ctx, "Increased worker pool size", "new_size", currentSize)
 			} else if len(jobs) == 0 && currentSize > minSize {
-				currentSize = max(currentSize-5, minSize)
+				currentSize = max(currentSize-workerBatchSize, minSize)
 				c.logger.DebugContext(ctx, "Decreased worker pool size", "new_size", currentSize)
 			}
+		}
+	}
+}
+
+func (c *Consumer) startWorker(ctx context.Context, jobs chan job, handler func(context.Context, api.Envelope) error) {
+	defer c.wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case j, ok := <-jobs:
+			if !ok {
+				return
+			}
+			c.handleMessage(ctx, j.r, j.msg, handler)
 		}
 	}
 }
@@ -222,7 +216,7 @@ func (c *Consumer) fetchMessages(ctx context.Context, r *kafka.Reader, jobs chan
 				}
 
 				c.logger.ErrorContext(ctx, "Failed to fetch message", "error", err)
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(errorBackoffDelay)
 
 				continue
 			}
@@ -311,6 +305,22 @@ func (c *Consumer) commitBatch() {
 	c.batchMutex.Lock()
 	defer c.batchMutex.Unlock()
 
+	readerMessages := c.groupMessagesByReader()
+
+	for reader, messages := range readerMessages {
+		if len(messages) == 0 {
+			continue
+		}
+
+		partitionOffsets := c.findMaxOffsetPerPartition(messages)
+
+		c.commitMessagesAndCleanup(reader, messages, partitionOffsets)
+	}
+
+	c.batchMessages = c.batchMessages[:0]
+}
+
+func (c *Consumer) groupMessagesByReader() map[*kafka.Reader][]kafka.Message {
 	readerMessages := make(map[*kafka.Reader][]kafka.Message)
 
 	c.deferredCommits.Range(func(_, value any) bool {
@@ -321,37 +331,48 @@ func (c *Consumer) commitBatch() {
 		return true
 	})
 
-	for reader, messages := range readerMessages {
-		if len(messages) == 0 {
-			continue
-		}
+	return readerMessages
+}
 
-		partitionOffsets := make(map[int]kafka.Message)
-		for _, msg := range messages {
-			currentMax, exists := partitionOffsets[msg.Partition]
-			if !exists || currentMax.Offset < msg.Offset {
-				partitionOffsets[msg.Partition] = msg
-			}
-		}
+func (c *Consumer) findMaxOffsetPerPartition(messages []kafka.Message) map[int]kafka.Message {
+	partitionOffsets := make(map[int]kafka.Message)
 
-		for _, msg := range partitionOffsets {
-			if err := reader.CommitMessages(context.Background(), msg); err != nil {
-				c.logger.Error("Failed to commit message batch",
-					"topic", msg.Topic,
-					"partition", msg.Partition,
-					"offset", msg.Offset,
-					"error", err.Error())
-			} else {
-				for _, commitedMsg := range messages {
-					if commitedMsg.Partition == msg.Partition && commitedMsg.Offset <= msg.Offset {
-						c.deferredCommits.Delete(fmt.Sprintf("%s-%d-%d", commitedMsg.Topic, commitedMsg.Partition, commitedMsg.Offset))
-					}
-				}
-			}
+	for _, msg := range messages {
+		currentMax, exists := partitionOffsets[msg.Partition]
+		if !exists || currentMax.Offset < msg.Offset {
+			partitionOffsets[msg.Partition] = msg
 		}
 	}
 
-	c.batchMessages = nil
+	return partitionOffsets
+}
+
+func (c *Consumer) commitMessagesAndCleanup(
+	reader *kafka.Reader,
+	messages []kafka.Message,
+	partitionOffsets map[int]kafka.Message,
+) {
+	for _, msg := range partitionOffsets {
+		if err := reader.CommitMessages(context.Background(), msg); err != nil {
+			c.logger.Error("Failed to commit message batch",
+				"topic", msg.Topic,
+				"partition", msg.Partition,
+				"offset", msg.Offset,
+				"error", err.Error())
+		} else {
+			c.cleanupCommittedMessages(messages, msg)
+		}
+	}
+}
+
+func (c *Consumer) cleanupCommittedMessages(messages []kafka.Message, committedMsg kafka.Message) {
+	for _, commitedMsg := range messages {
+		if commitedMsg.Partition == committedMsg.Partition && commitedMsg.Offset <= committedMsg.Offset {
+			c.deferredCommits.Delete(
+				fmt.Sprintf("%s-%d-%d", commitedMsg.Topic, commitedMsg.Partition, commitedMsg.Offset),
+			)
+		}
+	}
 }
 
 type job struct {
@@ -360,7 +381,7 @@ type job struct {
 }
 
 func (c *Consumer) headerMap(headers []kafka.Header) map[string]string {
-	m := make(map[string]string, len(headers))
+	m := make(map[string]string)
 	for _, h := range headers {
 		m[h.Key] = string(h.Value)
 	}

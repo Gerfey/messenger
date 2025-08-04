@@ -72,9 +72,9 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 			slog.String("topic", topic),
 			slog.String("message_type", fmt.Sprintf("%T", env.Message())))
 
-		err := writer.Close()
-		if err != nil {
-			return err
+		closeErr := writer.Close()
+		if closeErr != nil {
+			return closeErr
 		}
 	}
 
@@ -92,7 +92,7 @@ func (p *Producer) extractMessageKey(env api.Envelope) ([]byte, error) {
 			}
 		}
 
-		return nil, fmt.Errorf("message_id stamp not found")
+		return nil, errors.New("message_id stamp not found")
 	default:
 		return nil, fmt.Errorf("unknown key strategy: %s", p.cfg.Options.Key.Strategy)
 	}
