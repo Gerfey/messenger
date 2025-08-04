@@ -1,9 +1,5 @@
 package amqp
 
-import (
-	"time"
-)
-
 type TransportConfig struct {
 	Name    string
 	DSN     string
@@ -11,11 +7,17 @@ type TransportConfig struct {
 }
 
 type OptionsConfig struct {
-	AutoSetup        bool             `yaml:"auto_setup"         default:"false"`
-	ConsumerPoolSize int              `yaml:"consumer_pool_size" default:"10"`
-	CommitInterval   time.Duration    `yaml:"commit_interval"    default:"10"`
-	Exchange         ExchangeConfig   `yaml:"exchange"`
-	Queues           map[string]Queue `yaml:"queues"`
+	AutoSetup bool             `yaml:"auto_setup" default:"false"`
+	Pool      PoolConfig       `yaml:"pool"`
+	Exchange  ExchangeConfig   `yaml:"exchange"`
+	Queues    map[string]Queue `yaml:"queues"`
+}
+
+type PoolConfig struct {
+	Size    int  `yaml:"size"     default:"10"`
+	MinSize int  `yaml:"min_size" default:"5"`
+	MaxSize int  `yaml:"max_size" default:"20"`
+	Dynamic bool `yaml:"dynamic"  default:"false"`
 }
 
 type ExchangeConfig struct {

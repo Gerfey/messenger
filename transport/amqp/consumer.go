@@ -3,6 +3,9 @@ package amqp
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"sync"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -10,10 +13,18 @@ import (
 	"github.com/gerfey/messenger/core/stamps"
 )
 
+const (
+	defaultPoolSize         = 10
+	workerPoolCheckInterval = 30 * time.Second
+	workerBatchSize         = 5
+)
+
 type Consumer struct {
 	conn       *Connection
 	cfg        TransportConfig
 	serializer api.Serializer
+	wg         sync.WaitGroup
+	logger     *slog.Logger
 }
 
 func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serializer) *Consumer {
@@ -21,6 +32,7 @@ func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serialize
 		conn:       conn,
 		cfg:        cfg,
 		serializer: serializer,
+		logger:     slog.Default(),
 	}
 }
 
@@ -42,6 +54,8 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 	}
 
 	<-ctx.Done()
+	close(jobs)
+	c.wg.Wait()
 
 	return ctx.Err()
 }
@@ -51,17 +65,73 @@ func (c *Consumer) startWorkerPool(
 	jobs chan job,
 	handler func(context.Context, api.Envelope) error,
 ) {
-	poolSize := c.cfg.Options.ConsumerPoolSize
+	poolSize := c.cfg.Options.Pool.Size
 	if poolSize <= 0 {
-		poolSize = 10
+		poolSize = defaultPoolSize
 	}
 
 	for range poolSize {
-		go func() {
-			for j := range jobs {
-				c.handleDelivery(ctx, j.d, handler)
+		c.wg.Add(1)
+		go c.startWorker(ctx, jobs, handler)
+	}
+
+	if c.cfg.Options.Pool.Dynamic {
+		go c.manageWorkerPool(ctx, jobs, handler)
+	}
+}
+
+func (c *Consumer) manageWorkerPool(
+	ctx context.Context,
+	jobs chan job,
+	handler func(context.Context, api.Envelope) error,
+) {
+	ticker := time.NewTicker(workerPoolCheckInterval)
+	defer ticker.Stop()
+
+	currentSize := c.cfg.Options.Pool.Size
+	minSize := c.cfg.Options.Pool.MinSize
+	maxSize := c.cfg.Options.Pool.MaxSize
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if len(jobs) > currentSize && currentSize < maxSize {
+				toAdd := min(maxSize-currentSize, workerBatchSize)
+
+				for range toAdd {
+					c.wg.Add(1)
+					go c.startWorker(ctx, jobs, handler)
+				}
+
+				currentSize += toAdd
+				c.logger.DebugContext(ctx, "Increased worker pool size", "new_size", currentSize)
+			} else if len(jobs) == 0 && currentSize > minSize {
+				currentSize = max(currentSize-workerBatchSize, minSize)
+				c.logger.DebugContext(ctx, "Decreased worker pool size", "new_size", currentSize)
 			}
-		}()
+		}
+	}
+}
+
+func (c *Consumer) startWorker(
+	ctx context.Context,
+	jobs chan job,
+	handler func(context.Context, api.Envelope) error,
+) {
+	defer c.wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case j, ok := <-jobs:
+			if !ok {
+				return
+			}
+			c.handleDelivery(ctx, j.d, handler)
+		}
 	}
 }
 
@@ -91,8 +161,6 @@ func (c *Consumer) processQueueMessages(ctx context.Context, jobs chan job, mess
 	for {
 		select {
 		case <-ctx.Done():
-			close(jobs)
-
 			return
 		case d, ok := <-messages:
 			if !ok {
