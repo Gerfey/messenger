@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/serializer"
 )
 
 type Transport struct {
@@ -20,7 +19,7 @@ type Transport struct {
 	conn       *Connection
 }
 
-func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
+func NewTransport(cfg TransportConfig, logger *slog.Logger, ser api.Serializer) (api.Transport, error) {
 	u, err := url.Parse(cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse dsn: %w", err)
@@ -34,8 +33,6 @@ func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.L
 
 		return nil, err
 	}
-
-	ser := serializer.NewSerializer(resolver)
 
 	producer, err := NewProducer(cfg, ser, conn, logger)
 	if err != nil {

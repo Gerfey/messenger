@@ -1,13 +1,14 @@
 package sync_test
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"gopkg.in/yaml.v3"
+
+	"github.com/gerfey/messenger/core/serializer"
 
 	"github.com/gerfey/messenger/tests/mocks"
 	"github.com/gerfey/messenger/transport/sync"
@@ -17,22 +18,20 @@ func TestNewTransportFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockLocator := mocks.NewMockBusLocator(ctrl)
 
-	factory := sync.NewTransportFactory(logger, mockLocator)
+	factory := sync.NewTransportFactory(mockLocator)
 
 	assert.NotNil(t, factory)
-	assert.IsType(t, &sync.Factory{}, factory)
+	assert.IsType(t, &sync.TransportFactory{}, factory)
 }
 
 func TestFactory_Supports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockLocator := mocks.NewMockBusLocator(ctrl)
-	factory := sync.NewTransportFactory(logger, mockLocator)
+	factory := sync.NewTransportFactory(mockLocator)
 
 	testCases := []struct {
 		name     string
@@ -73,18 +72,19 @@ func TestFactory_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockLocator := mocks.NewMockBusLocator(ctrl)
-	factory := sync.NewTransportFactory(logger, mockLocator)
+	factory := sync.NewTransportFactory(mockLocator)
 
 	name := "test-sync"
 	dsn := "sync://"
 	options := map[string]any{}
+	mockResolver := mocks.NewMockTypeResolver(ctrl)
+	ser := serializer.NewSerializer(mockResolver)
 
 	optionsBytes, err := yaml.Marshal(options)
 	require.NoError(t, err)
 
-	transport, err := factory.Create(name, dsn, optionsBytes)
+	transport, err := factory.Create(name, dsn, optionsBytes, ser)
 
 	require.NoError(t, err)
 	assert.NotNil(t, transport)

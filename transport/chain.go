@@ -17,7 +17,11 @@ func NewFactoryChain(factories ...api.TransportFactory) *FactoryChain {
 	return &FactoryChain{factories: factories}
 }
 
-func (c *FactoryChain) CreateTransport(name string, config config.TransportConfig) (api.Transport, error) {
+func (c *FactoryChain) CreateTransport(
+	name string,
+	config config.TransportConfig,
+	sz api.Serializer,
+) (api.Transport, error) {
 	for _, factory := range c.factories {
 		if factory.Supports(config.DSN) {
 			rawOptions, errOptions := yaml.Marshal(config.Options)
@@ -25,7 +29,7 @@ func (c *FactoryChain) CreateTransport(name string, config config.TransportConfi
 				return nil, fmt.Errorf("%s: marshal options map: %w", name, errOptions)
 			}
 
-			return factory.Create(name, config.DSN, rawOptions)
+			return factory.Create(name, config.DSN, rawOptions, sz)
 		}
 	}
 

@@ -220,7 +220,7 @@ func (f *TestTransportFactory) Supports(_ string) bool {
 	return true
 }
 
-func (f *TestTransportFactory) Create(_ string, _ string, _ []byte) (api.Transport, error) {
+func (f *TestTransportFactory) Create(_ string, _ string, _ []byte, _ api.Serializer) (api.Transport, error) {
 	if f.CreateError != nil {
 		return nil, f.CreateError
 	}

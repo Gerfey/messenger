@@ -11,11 +11,12 @@ const (
 )
 
 type MessengerConfig struct {
-	DefaultBus       string                     `yaml:"default_bus"       default:"default"`
-	FailureTransport string                     `yaml:"failure_transport"`
-	Buses            map[string]BusConfig       `yaml:"buses"`
-	Transports       map[string]TransportConfig `yaml:"transports"`
-	Routing          map[string]string          `yaml:"routing"`
+	DefaultBus        string                     `yaml:"default_bus"        default:"default"`
+	DefaultSerializer string                     `yaml:"default_serializer" default:"default.transport.serializer"`
+	FailureTransport  string                     `yaml:"failure_transport"`
+	Buses             map[string]BusConfig       `yaml:"buses"`
+	Transports        map[string]TransportConfig `yaml:"transports"`
+	Routing           map[string]string          `yaml:"routing"`
 }
 
 type BusConfig struct {
@@ -24,6 +25,7 @@ type BusConfig struct {
 
 type TransportConfig struct {
 	DSN           string               `yaml:"dsn"`
+	Serializer    string               `yaml:"serializer"`
 	RetryStrategy *RetryStrategyConfig `yaml:"retry_strategy"`
 	Options       map[string]any       `yaml:"options"`
 }

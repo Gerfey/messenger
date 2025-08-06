@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/serializer"
 )
 
 type Transport struct {
@@ -20,15 +19,13 @@ type Transport struct {
 	logger     *slog.Logger
 }
 
-func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
+func NewTransport(cfg TransportConfig, logger *slog.Logger, ser api.Serializer) (api.Transport, error) {
 	conn, err := NewConnection(cfg.DSN)
 	if err != nil {
 		logger.Error("failed to create AMQP connection", "dsn", cfg.DSN, "error", err)
 
 		return nil, err
 	}
-
-	ser := serializer.NewSerializer(resolver)
 
 	pub := NewPublisher(conn, cfg, ser)
 	cons := NewConsumer(conn, cfg, ser)

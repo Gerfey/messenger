@@ -12,14 +12,12 @@ import (
 )
 
 type TransportFactory struct {
-	logger   *slog.Logger
-	resolver api.TypeResolver
+	logger *slog.Logger
 }
 
-func NewTransportFactory(logger *slog.Logger, resolver api.TypeResolver) api.TransportFactory {
+func NewTransportFactory(logger *slog.Logger) api.TransportFactory {
 	return &TransportFactory{
-		logger:   logger,
-		resolver: resolver,
+		logger: logger,
 	}
 }
 
@@ -27,7 +25,7 @@ func (t *TransportFactory) Supports(dsn string) bool {
 	return strings.HasPrefix(dsn, "redis://")
 }
 
-func (t *TransportFactory) Create(name string, dsn string, options []byte) (api.Transport, error) {
+func (t *TransportFactory) Create(name string, dsn string, options []byte, ser api.Serializer) (api.Transport, error) {
 	var optsConfig OptionsConfig
 	if err := defaults.Set(&optsConfig); err != nil {
 		return nil, fmt.Errorf("set defaults: %w", err)
@@ -43,5 +41,5 @@ func (t *TransportFactory) Create(name string, dsn string, options []byte) (api.
 		Options: optsConfig,
 	}
 
-	return NewTransport(tCfg, t.resolver, t.logger)
+	return NewTransport(tCfg, t.logger, ser)
 }

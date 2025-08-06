@@ -33,7 +33,7 @@ type SenderLocator interface {
 
 type TransportFactory interface {
 	Supports(string) bool
-	Create(string, string, []byte) (Transport, error)
+	Create(string, string, []byte, Serializer) (Transport, error)
 }
 
 type RoutedMessage interface {

@@ -201,7 +201,8 @@ func TestBuilder_RegisterListener(t *testing.T) {
 func TestBuilder_RegisterTransportFactory(t *testing.T) {
 	t.Run("register transport factory", func(t *testing.T) {
 		cfg := &config.MessengerConfig{
-			DefaultBus: "default",
+			DefaultBus:        "default",
+			DefaultSerializer: "default.transport.serializer",
 			Buses: map[string]config.BusConfig{
 				"default": {
 					Middleware: []string{},
@@ -256,7 +257,8 @@ func TestBuilder_RegisterTransportFactory(t *testing.T) {
 func TestBuilder_Build_Errors(t *testing.T) {
 	t.Run("build fails with unknown message type in routing", func(t *testing.T) {
 		cfg := &config.MessengerConfig{
-			DefaultBus: "default",
+			DefaultBus:        "default",
+			DefaultSerializer: "default.transport.serializer",
 			Buses: map[string]config.BusConfig{
 				"default": {
 					Middleware: []string{},
@@ -319,7 +321,8 @@ func TestBuilder_Build_Errors(t *testing.T) {
 func TestBuilder_Build_Success(t *testing.T) {
 	t.Run("build messenger with complete configuration", func(t *testing.T) {
 		cfg := &config.MessengerConfig{
-			DefaultBus: "default",
+			DefaultBus:        "default",
+			DefaultSerializer: "default.transport.serializer",
 			Buses: map[string]config.BusConfig{
 				"default": {
 					Middleware: []string{"test_middleware"},
@@ -368,7 +371,8 @@ func TestBuilder_Build_Success(t *testing.T) {
 
 	t.Run("build messenger with retry configuration", func(t *testing.T) {
 		cfg := &config.MessengerConfig{
-			DefaultBus: "default",
+			DefaultBus:        "default",
+			DefaultSerializer: "default.transport.serializer",
 			Buses: map[string]config.BusConfig{
 				"default": {
 					Middleware: []string{},
@@ -404,7 +408,8 @@ func TestBuilder_Build_Success(t *testing.T) {
 
 	t.Run("build messenger with multiple buses and transports", func(t *testing.T) {
 		cfg := &config.MessengerConfig{
-			DefaultBus: "default",
+			DefaultBus:        "default",
+			DefaultSerializer: "default.transport.serializer",
 			Buses: map[string]config.BusConfig{
 				"default": {
 					Middleware: []string{},

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/serializer"
 )
 
 type Transport struct {
@@ -19,15 +18,13 @@ type Transport struct {
 	conn       *Connection
 }
 
-func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
+func NewTransport(cfg TransportConfig, logger *slog.Logger, ser api.Serializer) (api.Transport, error) {
 	conn, err := NewConnection(cfg.DSN)
 	if err != nil {
 		logger.Error("failed to connect", "error", err)
 
 		return nil, err
 	}
-
-	ser := serializer.NewSerializer(resolver)
 
 	producer := NewProducer(cfg, ser, conn, logger)
 	consumer := NewConsumer(cfg, ser, conn, logger)

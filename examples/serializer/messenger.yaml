@@ -1,0 +1,10 @@
+default_bus: default
+default_serializer: default.transport.serializer
+
+buses:
+  default: ~
+
+transports:
+  sync:
+    dsn: "sync://"
+    serializer: test.json
