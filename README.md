@@ -7,14 +7,14 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Gerfey/messenger.svg)](https://pkg.go.dev/github.com/Gerfey/messenger)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> `v0.7.0` is a pre-release version — feel free to test and report issues!
+> `v0.8.0` is a pre-release version — feel free to test and report issues!
 
 > Full documentation available in the [GitHub Wiki](https://github.com/Gerfey/messenger/wiki/Documentation)
 
 🇷🇺 [Русская версия](README.ru.md)
 
 ## Features
-- **Multiple Transports**: AMQP (RabbitMQ), In-Memory (sync)
+- **Multiple Transports**: AMQP (RabbitMQ), Kafka, Redis (Stream), In-Memory (sync)
 - **Middleware Chain**: Extensible middleware system for message processing
 - **Event-Driven**: Built-in event dispatcher for lifecycle hooks
 - **Retry Mechanism**: Configurable retry strategies with exponential backoff
@@ -25,7 +25,7 @@
 ## Installation
 > Requires Go 1.24+
 ```bash
-go get github.com/gerfey/messenger@v0.7.0
+go get github.com/gerfey/messenger@v0.8.0
 ```
 
 ## Quick Start
@@ -93,6 +93,10 @@ _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
 
 > See [Usage Scenarios](https://github.com/Gerfey/messenger/wiki/Usage-Scenarios) for commands, queries, return values and advanced use-cases.
 
+## Efficiency
+
+- AMQP (RabbitMQ): [AMQP Benchmark Report](docs/benchmark/AMQP-Benchmark.md)
+
 ## Contributing
 
 1. Fork the repository
@@ -101,7 +105,7 @@ _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ⚖License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 

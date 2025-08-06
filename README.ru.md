@@ -7,7 +7,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Gerfey/messenger.svg)](https://pkg.go.dev/github.com/Gerfey/messenger)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Версия `v0.7.0` — это пре-релиз. Тестируйте и сообщайте о багах!
+> Версия `v0.8.0` — это пре-релиз. Тестируйте и сообщайте о багах!
 
 > Полная документация доступна на [GitHub Wiki](https://github.com/Gerfey/messenger/wiki/Documentation)
 
@@ -16,7 +16,7 @@
 ---
 
 ## Возможности
-- **Множественные транспорты**: AMQP (RabbitMQ), In-Memory (`sync`)
+- **Множественные транспорты**: AMQP (RabbitMQ), Kafka, Redis (Stream), In-Memory (sync)
 - **Цепочка middleware**: Расширяемая система промежуточной обработки
 - **Событийный движок**: Встроенный dispatcher событий жизненного цикла
 - **Механизм повторов**: Настраиваемые стратегии ретраев с поддержкой DLQ
@@ -27,7 +27,7 @@
 ## Установка
 > Требуется Go версии **1.24+**
 ```bash
-go get github.com/gerfey/messenger@v0.7.0
+go get github.com/gerfey/messenger@v0.8.0
 ```
 
 ## Быстрый старт
@@ -94,6 +94,10 @@ _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
 * Слушатели событий и хуки жизненного цикла
 
 > Смотри [Сценарии использования](https://github.com/Gerfey/messenger/wiki/Сценарии-использования).
+
+## Производительность
+
+- AMQP (RabbitMQ): [AMQP Benchmark Report](docs/benchmark/AMQP-Benchmark.md)
 
 ## Как внести вклад
 
