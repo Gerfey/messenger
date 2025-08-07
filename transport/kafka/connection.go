@@ -58,12 +58,21 @@ func (c *Connection) CreateReader(config kafka.ReaderConfig) *kafka.Reader {
 	return kafka.NewReader(config)
 }
 
-func (c *Connection) CreateWriter(topic string) *kafka.Writer {
+func (c *Connection) CreateWriter(
+	topic string,
+	opts ProducerOptionsConfig,
+	async bool,
+	balancer kafka.Balancer,
+) *kafka.Writer {
 	return &kafka.Writer{
 		Addr:         kafka.TCP(c.brokers...),
 		Topic:        topic,
-		RequiredAcks: kafka.RequireAll,
-		Balancer:     &kafka.LeastBytes{},
-		Async:        false,
+		RequiredAcks: kafka.RequiredAcks(opts.RequiredAcks),
+		Async:        async,
+		Balancer:     balancer,
+		BatchSize:    opts.BatchSize,
+		BatchTimeout: opts.BatchTimeout,
+		WriteTimeout: opts.WriteTimeout,
+		ReadTimeout:  opts.ReadTimeout,
 	}
 }

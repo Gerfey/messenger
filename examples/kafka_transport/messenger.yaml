@@ -7,40 +7,41 @@ buses:
 transports:
   kafka:
     dsn: "kafka://localhost:29092/"
-    retry_strategy:
-      max_retries: 5
-      delay: 500ms
-      multiplier: 2
-      max_delay: 5s
+    serializer: default.transport.serializer
     options:
       topics:
         - my-topic
       group: my-group
-      offset_config:
-        type: earliest
-      commit:
-        strategy: batch
-        interval: 500ms
-        batch_size: 10
-      pool:
-        size: 3
-        min_size: 2
-        max_size: 10
-        dynamic: true
-      rebalance:
-        strategy: roundrobin
-      key:
-        strategy: message_id
 
-  failed_messages:
-    dsn: "amqp://guest:guest@localhost:5672/"
-    options:
-      auto_setup: true
-      exchange:
-        name: failed_exchange
-        type: fanout
-      queues:
-        failed_messages_queue: ~
+      producer:
+        async: true
+        required_acks: -1   # -1: all replicas (strongest durability), 0: no ack, 1: leader only
+        batch_size: 1000
+        batch_timeout: 20ms
+        write_timeout: 10s
+        read_timeout: 10s
+        balancer: least_bytes    # least_bytes, hash, round_robin
+
+      consumer:
+        offset:
+          type: earliest    # earliest, latest, specific
+          value: 0    # used only for "specific"
+        commit:
+          strategy: batch   # auto, batch, deferred
+          interval: 500ms
+          batch_size: 10
+        rebalance:
+          strategy: roundrobin    # roundrobin, range
+        pool:
+          size: 3
+          min_size: 2
+          max_size: 10
+          dynamic: true
+        session_timeout: 10s
+        heartbeat_interval: 2s
+
+      key:
+        strategy: message_id    # none / message_id
 
 routing:
   message.ExampleHelloMessage: kafka

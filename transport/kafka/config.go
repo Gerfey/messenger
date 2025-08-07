@@ -9,13 +9,30 @@ type TransportConfig struct {
 }
 
 type OptionsConfig struct {
-	Topics       []string        `yaml:"topics,omitempty"`
-	Group        string          `yaml:"group"            default:"group"`
-	OffsetConfig OffsetConfig    `yaml:"offset_config"`
-	Commit       CommitConfig    `yaml:"commit"`
-	Pool         PoolConfig      `yaml:"pool"`
-	Rebalance    RebalanceConfig `yaml:"rebalance"`
-	Key          KeyConfig       `yaml:"key"`
+	Topics   []string              `yaml:"topics,omitempty"`
+	Group    string                `yaml:"group"            default:"default-group"`
+	Producer ProducerOptionsConfig `yaml:"producer"`
+	Consumer ConsumerOptionsConfig `yaml:"consumer"`
+	Key      KeyConfig             `yaml:"key"`
+}
+
+type ProducerOptionsConfig struct {
+	Async        bool          `yaml:"async"         default:"false"`
+	RequiredAcks int           `yaml:"required_acks" default:"1"` // 0, 1, -1 (all)
+	BatchSize    int           `yaml:"batch_size"    default:"1000"`
+	BatchTimeout time.Duration `yaml:"batch_timeout" default:"20ms"`
+	WriteTimeout time.Duration `yaml:"write_timeout" default:"10s"`
+	ReadTimeout  time.Duration `yaml:"read_timeout"  default:"10s"`
+	Balancer     string        `yaml:"balancer"      default:"least_bytes"` // least_bytes, hash, round_robin
+}
+
+type ConsumerOptionsConfig struct {
+	OffsetConfig      OffsetConfig    `yaml:"offset"`
+	Commit            CommitConfig    `yaml:"commit"`
+	Pool              PoolConfig      `yaml:"pool"`
+	Rebalance         RebalanceConfig `yaml:"rebalance"`
+	SessionTimeout    time.Duration   `yaml:"session_timeout"    default:"10s"`
+	HeartbeatInterval time.Duration   `yaml:"heartbeat_interval" default:"2s"`
 }
 
 type OffsetConfig struct {
@@ -24,16 +41,16 @@ type OffsetConfig struct {
 }
 
 type CommitConfig struct {
-	Strategy  string        `yaml:"strategy"   default:"auto"`
-	Interval  time.Duration `yaml:"interval"   default:"1s"`
-	BatchSize int           `yaml:"batch_size" default:"100"`
+	Strategy  string        `yaml:"strategy"   default:"batch"` // auto, manual, batch, deferred
+	Interval  time.Duration `yaml:"interval"   default:"500ms"` // only for batch
+	BatchSize int           `yaml:"batch_size" default:"10"`    // only for batch
 }
 
 type PoolConfig struct {
-	Size    int  `yaml:"size"     default:"10"`
-	MinSize int  `yaml:"min_size" default:"5"`
-	MaxSize int  `yaml:"max_size" default:"50"`
-	Dynamic bool `yaml:"dynamic"  default:"false"`
+	Size    int  `yaml:"size"     default:"3"`
+	MinSize int  `yaml:"min_size" default:"2"`
+	MaxSize int  `yaml:"max_size" default:"10"`
+	Dynamic bool `yaml:"dynamic"  default:"true"`
 }
 
 type RebalanceConfig struct {

@@ -1,4 +1,4 @@
-package amqp_test
+package kafka_test
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	benchmarkDSN     = "amqp://guest:guest@localhost:5672/"
+	benchmarkDSN     = "kafka://localhost:29092/"
 	benchmarkTimeout = 60 * time.Second
 )
 
@@ -62,25 +62,20 @@ func setupMessenger(b *testing.B, withWaitGroup bool) api.MessageBus {
 			"default": {},
 		},
 		Transports: map[string]config.TransportConfig{
-			"amqp": {
+			"kafka": {
 				DSN:        benchmarkDSN,
 				Serializer: "default.transport.serializer",
 				Options: map[string]any{
-					"auto_setup": true,
-					"exchange": map[string]any{
-						"name": "benchmark_exchange",
-						"type": "topic",
-					},
-					"queues": map[string]any{
-						"benchmark_queue": map[string]any{
-							"binding_keys": []string{"benchmark_routing_key"},
-						},
+					"topics": []string{"benchmark_topic"},
+					"group":  "benchmark_group",
+					"producer": map[string]any{
+						"async": false,
 					},
 				},
 			},
 		},
 		Routing: map[string]string{
-			"*amqp_test.BenchmarkMessage": "amqp",
+			"*kafka_test.BenchmarkMessage": "kafka",
 		},
 	}
 

@@ -63,6 +63,10 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 	return t.consumer.Consume(ctx, handler)
 }
 
+func (t *Transport) Close() error {
+	return t.producer.Close()
+}
+
 func (t *Transport) Retry(ctx context.Context, env api.Envelope) error {
 	return t.producer.Send(ctx, env)
 }

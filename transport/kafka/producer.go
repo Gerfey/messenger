@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -18,15 +19,67 @@ type Producer struct {
 	serializer api.Serializer
 	conn       *Connection
 	logger     *slog.Logger
+	writers    map[string]*kafka.Writer
+	mu         sync.RWMutex
 }
 
 func NewProducer(cfg TransportConfig, ser api.Serializer, conn *Connection, logger *slog.Logger) (*Producer, error) {
-	return &Producer{
+	p := &Producer{
 		cfg:        cfg,
 		serializer: ser,
 		conn:       conn,
 		logger:     logger,
-	}, nil
+		writers:    make(map[string]*kafka.Writer),
+	}
+
+	if len(cfg.Options.Topics) == 0 {
+		return nil, errors.New("no topics configured for kafka transport")
+	}
+
+	var balancer kafka.Balancer = &kafka.LeastBytes{}
+	switch cfg.Options.Producer.Balancer {
+	case "hash":
+		balancer = &kafka.Hash{}
+	case "round_robin":
+		balancer = &kafka.RoundRobin{}
+	case "least_bytes":
+		balancer = &kafka.LeastBytes{}
+	}
+
+	if cfg.Options.Key.Strategy != "none" {
+		balancer = &kafka.Hash{}
+	}
+
+	for _, topic := range cfg.Options.Topics {
+		writer := conn.CreateWriter(
+			topic,
+			cfg.Options.Producer,
+			cfg.Options.Producer.Async,
+			balancer,
+		)
+
+		p.writers[topic] = writer
+	}
+
+	return p, nil
+}
+
+func (p *Producer) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	var errs []error
+	for topic, writer := range p.writers {
+		if err := writer.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close writer for topic %s: %w", topic, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors closing writers: %v", errs)
+	}
+
+	return nil
 }
 
 func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
@@ -51,49 +104,37 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		msg.Key = key
 	}
 
-	topics := p.cfg.Options.Topics
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 
-	if len(topics) == 0 {
-		return errors.New("no topics configured for kafka transport")
-	}
-
-	for _, topic := range topics {
-		writer := p.conn.CreateWriter(topic)
-
-		if p.cfg.Options.Key.Strategy != "none" {
-			writer.Balancer = &kafka.Hash{}
+	for _, topic := range p.cfg.Options.Topics {
+		writer, exists := p.writers[topic]
+		if !exists {
+			return fmt.Errorf("writer for topic %s not found", topic)
 		}
 
 		if writeErr := writer.WriteMessages(ctx, msg); writeErr != nil {
-			return fmt.Errorf("producer failed to write messages: %w", writeErr)
+			return fmt.Errorf("producer failed to write messages to topic %s: %w", topic, writeErr)
 		}
 
 		p.logger.DebugContext(ctx, "message sent to kafka topic",
 			slog.String("topic", topic),
 			slog.String("message_type", fmt.Sprintf("%T", env.Message())))
-
-		closeErr := writer.Close()
-		if closeErr != nil {
-			return closeErr
-		}
 	}
 
 	return nil
 }
 
 func (p *Producer) extractMessageKey(env api.Envelope) ([]byte, error) {
-	switch p.cfg.Options.Key.Strategy {
-	case "none":
+	if p.cfg.Options.Key.Strategy != "message_id" {
 		return nil, nil
-	case "message_id":
-		for _, s := range env.Stamps() {
-			if msgIDStamp, ok := s.(stamps.MessageIDStamp); ok {
-				return []byte(msgIDStamp.MessageID), nil
-			}
-		}
-
-		return nil, errors.New("message_id stamp not found")
-	default:
-		return nil, fmt.Errorf("unknown key strategy: %s", p.cfg.Options.Key.Strategy)
 	}
+
+	for _, s := range env.Stamps() {
+		if msgIDStamp, ok := s.(stamps.MessageIDStamp); ok {
+			return []byte(msgIDStamp.MessageID), nil
+		}
+	}
+
+	return nil, errors.New("message_id stamp not found")
 }
