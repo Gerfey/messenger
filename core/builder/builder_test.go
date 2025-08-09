@@ -7,8 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/builder"
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
+
 	"github.com/gerfey/messenger/core/stamps"
 	"github.com/gerfey/messenger/tests/helpers"
 )

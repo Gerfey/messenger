@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
 )
 
 type testProcessor struct {
@@ -25,7 +25,7 @@ func (p *testProcessor) Process(content []byte) ([]byte, error) {
 
 func TestLoadConfig(t *testing.T) {
 	t.Run("load valid config", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 		cfg, err := config.LoadConfig(path)
 
 		require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("load config with env variables", func(t *testing.T) {
-		path := "../tests/fixtures/configs/config_with_env.yaml"
+		path := "../../tests/fixtures/configs/config_with_env.yaml"
 
 		t.Setenv("MEMORY_HOST", "test-host")
 		t.Setenv("CONSUMER_POOL_SIZE", "15")
@@ -68,7 +68,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("load invalid config", func(t *testing.T) {
-		path := "../tests/fixtures/configs/invalid_config.yaml"
+		path := "../../tests/fixtures/configs/invalid_config.yaml"
 		cfg, err := config.LoadConfig(path)
 
 		require.Error(t, err)
@@ -76,7 +76,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("load with custom processor", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 
 		customProcessor := &testProcessor{
 			processFunc: func(content []byte) ([]byte, error) {

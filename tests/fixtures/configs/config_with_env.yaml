@@ -31,4 +31,4 @@ transports:
             - "#"
 
 routing:
-  "test.TestMessage": default
+  "*test.TestMessage": default

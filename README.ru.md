@@ -95,9 +95,12 @@ _, _ = bus.Dispatch(ctx, &HelloMessage{Text: "World"})
 
 > Смотри [Сценарии использования](https://github.com/Gerfey/messenger/wiki/Сценарии-использования).
 
-## Производительность
+## Показатели
 
-- AMQP (RabbitMQ): [AMQP Benchmark Report](docs/benchmark/AMQP-Benchmark.md)
+- AMQP (RabbitMQ): [AMQP Transport Benchmark Report](docs/benchmark/AMQP-Benchmark.md)
+- Redis (Stream): [Redis Transport Benchmark Report](docs/benchmark/Redis-Benchmark.md)
+- Sync: [Sync Transport Benchmark Report](docs/benchmark/Sync-Benchmark.md)
+- Kafka (Async): [Kafka Transport Async Benchmark Report](docs/benchmark/Kafka-async-Benchmark.md)
 
 ## Как внести вклад
 

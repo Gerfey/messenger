@@ -8,8 +8,8 @@ import (
 
 	"github.com/gerfey/messenger"
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/core/bus"
+	"github.com/gerfey/messenger/core/config"
 	"github.com/gerfey/messenger/core/event"
 	"github.com/gerfey/messenger/core/handler"
 	"github.com/gerfey/messenger/core/listener"
@@ -77,10 +77,6 @@ func (b *Builder) RegisterHandler(handler any) error {
 		return fmt.Errorf("register handler: %w", err)
 	}
 
-	for _, h := range b.handlersLocator.GetAll() {
-		b.resolver.Register(h.InputType.String(), h.InputType)
-	}
-
 	return nil
 }
 
@@ -107,6 +103,10 @@ func (b *Builder) RegisterListener(event any, listener any) {
 }
 
 func (b *Builder) Build() (api.Messenger, error) {
+	for _, h := range b.handlersLocator.GetAll() {
+		b.resolver.Register(h.InputType.String(), h.InputType)
+	}
+
 	b.registerStamps()
 
 	b.serializerLocator.Register("default.transport.serializer", serializer.NewSerializer(b.resolver))
@@ -180,7 +180,7 @@ func (b *Builder) setupRouting() (api.Router, error) {
 	router := routing.NewRouter()
 
 	for msgTypeStr, transportName := range b.cfg.Routing {
-		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
+		t, err := b.resolver.ResolveMessageType(msgTypeStr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve message type '%s' in routing configuration: %w", msgTypeStr, err)
 		}

@@ -8,7 +8,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
+
 	"github.com/gerfey/messenger/transport/amqp"
 )
 

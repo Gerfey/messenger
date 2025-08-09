@@ -14,10 +14,9 @@ type OptionsConfig struct {
 }
 
 type PoolConfig struct {
-	Size    int  `yaml:"size"     default:"10"`
-	MinSize int  `yaml:"min_size" default:"5"`
-	MaxSize int  `yaml:"max_size" default:"20"`
-	Dynamic bool `yaml:"dynamic"  default:"false"`
+	Size    int `yaml:"size"     default:"10"`
+	MinSize int `yaml:"min_size" default:"5"`
+	MaxSize int `yaml:"max_size" default:"20"`
 }
 
 type ExchangeConfig struct {

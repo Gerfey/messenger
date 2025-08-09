@@ -1,45 +1,26 @@
-# AMQP Benchmark Report
+# AMQP Transport Benchmark Report
 
-Current performance results of the AMQP transport in Messenger (`v0.8.0`), tested with `RabbitMQ` using the `amqp091-go` client.
+* Transport: `amqp://` (Messenger `v0.8.0`)
+* Publishing mode: sync
 
 ## Overall Performance
 
-| Benchmark                     | Time (ns/op) | Throughput (msg/sec) | Memory (B/op) | Allocs/op |
-|------------------------------|---------------|---------------------|----------------|-----------|
-| `BenchmarkAMQPSend`          | 465,508       | ~2,148              | 13,822         | 267       |
-| `BenchmarkAMQPConcurrentSend`| 296,922       | ~3,368              | 13,829         | 266       |
+| Benchmark                 | Time (ns/op) | Throughput (msg/sec) | Memory (B/op) | Allocs/op |
+| ------------------------- | -----------: | -------------------: | ------------: | --------: |
+| `BenchmarkSend`           |      378,376 |              \~2,643 |         6,792 |       130 |
+| `BenchmarkConcurrentSend` |      245,631 |              \~4,071 |         6,790 |       129 |
 
-*Concurrent sending is ~36% faster with 100B messages.*
+*Parallel sending gives ~1.5x increase in bandwidth with similar memory consumption.*
 
 ---
 
 ## Message Size Impact
 
 | Message Size | Time (ns/op) | Throughput (msg/sec) | Memory (B/op) | Allocs/op |
-|------------------|---------------|---------------------|----------------|-----------|
-| 100 B            | 472,831       | ~2,115              | 13,826         | 267       |
-| 1 KB             | 557,170       | ~1,794              | 19,874         | 267       |
-| 10 KB            | 704,831       | ~1,418              | 82,185         | 269       |
-| 100 KB           | 1,788,004     | ~559                | 726,393        | 276       |
+| ------------ | -----------: | -------------------: | ------------: | --------: |
+| 100 B        |      384,571 |              \~2,600 |         6,797 |       130 |
+| 1 KB         |      397,139 |              \~2,518 |         9,058 |       130 |
+| 10 KB        |      445,552 |              \~2,244 |        31,667 |       130 |
+| 100 KB       |    1,397,238 |                \~716 |       320,669 |       136 |
 
-*As the payload size increases, throughput decreases and memory pressure on GC grows, as expected.*
-
----
-
-## Allocations: `pprof` Analysis
-> Collected using `go test -bench=BenchmarkAMQP -benchmem -memprofile mem.out`, analyzed via `pprof`.
-
-(pprof) top
-
-- encoding/json: ~20%
-- amqp091-go (sendOpen, Ack, readLongstr): ~25%
-- Envelope.WithStamp: 5.75%
-- Middleware chain: ~5%
-
----
-
-## Summary
-
-- AMQP transport in Messenger demonstrates stable and predictable performance
-- Memory and allocation optimization opportunities are being addressed in upcoming versions
-
+*Increasing the payload size is expected to reduce RPS and increase memory consumption.*

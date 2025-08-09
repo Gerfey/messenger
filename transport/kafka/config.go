@@ -17,13 +17,14 @@ type OptionsConfig struct {
 }
 
 type ProducerOptionsConfig struct {
-	Async        bool          `yaml:"async"         default:"false"`
-	RequiredAcks int           `yaml:"required_acks" default:"1"` // 0, 1, -1 (all)
-	BatchSize    int           `yaml:"batch_size"    default:"1000"`
-	BatchTimeout time.Duration `yaml:"batch_timeout" default:"20ms"`
-	WriteTimeout time.Duration `yaml:"write_timeout" default:"10s"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"  default:"10s"`
-	Balancer     string        `yaml:"balancer"      default:"least_bytes"` // least_bytes, hash, round_robin
+	Async             bool          `yaml:"async"               default:"false"`
+	AutoTopicCreation bool          `yaml:"auto_topic_creation" default:"false"`
+	RequiredAcks      int           `yaml:"required_acks"       default:"1"` // 0, 1, -1 (all)
+	BatchSize         int           `yaml:"batch_size"          default:"256"`
+	BatchTimeout      time.Duration `yaml:"batch_timeout"       default:"5ms"`
+	WriteTimeout      time.Duration `yaml:"write_timeout"       default:"10s"`
+	ReadTimeout       time.Duration `yaml:"read_timeout"        default:"10s"`
+	Balancer          string        `yaml:"balancer"            default:"round_robin"` // least_bytes, hash, round_robin
 }
 
 type ConsumerOptionsConfig struct {
@@ -47,10 +48,9 @@ type CommitConfig struct {
 }
 
 type PoolConfig struct {
-	Size    int  `yaml:"size"     default:"3"`
-	MinSize int  `yaml:"min_size" default:"2"`
-	MaxSize int  `yaml:"max_size" default:"10"`
-	Dynamic bool `yaml:"dynamic"  default:"true"`
+	Size    int `yaml:"size"     default:"3"`
+	MinSize int `yaml:"min_size" default:"2"`
+	MaxSize int `yaml:"max_size" default:"10"`
 }
 
 type RebalanceConfig struct {

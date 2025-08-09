@@ -1,24 +1,18 @@
 package kafka_test
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/builder"
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
 )
 
 const (
-	benchmarkDSN     = "kafka://localhost:29092/"
-	benchmarkTimeout = 60 * time.Second
+	benchmarkDSN = "kafka://localhost:29092/"
 )
 
 type BenchmarkMessage struct {
@@ -27,34 +21,10 @@ type BenchmarkMessage struct {
 	Data    []byte
 }
 
-func (m *BenchmarkMessage) RoutingKey() string {
-	return "benchmark_routing_key"
-}
-
-type BenchmarkHandler struct {
-	processedCount *int64
-	wg             *sync.WaitGroup
-}
-
-func (h *BenchmarkHandler) Handle(_ context.Context, _ *BenchmarkMessage) error {
-	atomic.AddInt64(h.processedCount, 1)
-	if h.wg != nil {
-		h.wg.Done()
-	}
-
-	return nil
-}
-
-func (h *BenchmarkHandler) GetBusName() string {
-	return "default"
-}
-
-func setupMessenger(b *testing.B, withWaitGroup bool) api.MessageBus {
+func setupMessenger(b *testing.B) api.MessageBus {
 	b.Helper()
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelError,
-	}))
+	logger := slog.New(slog.DiscardHandler)
 
 	cfg := &config.MessengerConfig{
 		DefaultBus: "default",
@@ -66,10 +36,10 @@ func setupMessenger(b *testing.B, withWaitGroup bool) api.MessageBus {
 				DSN:        benchmarkDSN,
 				Serializer: "default.transport.serializer",
 				Options: map[string]any{
-					"topics": []string{"benchmark_topic"},
-					"group":  "benchmark_group",
+					"topics": []string{"benchmark-topic"},
+					"group":  "benchmark-group",
 					"producer": map[string]any{
-						"async": false,
+						"async": true,
 					},
 				},
 			},
@@ -79,36 +49,14 @@ func setupMessenger(b *testing.B, withWaitGroup bool) api.MessageBus {
 		},
 	}
 
-	processedCount := int64(0)
-	var wg *sync.WaitGroup
-	if withWaitGroup {
-		wg = &sync.WaitGroup{}
-	}
-
-	handler := &BenchmarkHandler{
-		processedCount: &processedCount,
-		wg:             wg,
-	}
-
 	builderInstance := builder.NewBuilder(cfg, logger)
-	if err := builderInstance.RegisterHandler(handler); err != nil {
-		b.Fatalf("Register handler failed: %v", err)
-	}
+
+	builderInstance.RegisterMessage(&BenchmarkMessage{})
 
 	messenger, err := builderInstance.Build()
 	if err != nil {
 		b.Fatalf("Build messenger failed: %v", err)
 	}
-
-	ctx, cancel := context.WithTimeout(b.Context(), benchmarkTimeout)
-	go func() {
-		defer cancel()
-		if runErr := messenger.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
-			b.Logf("Messenger run error: %v", runErr)
-		}
-	}()
-
-	time.Sleep(2 * time.Second)
 
 	bus, err := messenger.GetDefaultBus()
 	if err != nil {
@@ -153,12 +101,12 @@ func dispatchMessages(b *testing.B, bus api.MessageBus, size int, parallel bool)
 }
 
 func BenchmarkSend(b *testing.B) {
-	bus := setupMessenger(b, false)
+	bus := setupMessenger(b)
 	dispatchMessages(b, bus, 100, false)
 }
 
 func BenchmarkConcurrentSend(b *testing.B) {
-	bus := setupMessenger(b, false)
+	bus := setupMessenger(b)
 	dispatchMessages(b, bus, 100, true)
 }
 
@@ -166,7 +114,7 @@ func BenchmarkMessageSizes(b *testing.B) {
 	sizes := []int{100, 1024, 10240, 102400}
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("Size_%dB", size), func(b *testing.B) {
-			bus := setupMessenger(b, false)
+			bus := setupMessenger(b)
 			dispatchMessages(b, bus, size, false)
 		})
 	}

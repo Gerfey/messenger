@@ -65,14 +65,15 @@ func (c *Connection) CreateWriter(
 	balancer kafka.Balancer,
 ) *kafka.Writer {
 	return &kafka.Writer{
-		Addr:         kafka.TCP(c.brokers...),
-		Topic:        topic,
-		RequiredAcks: kafka.RequiredAcks(opts.RequiredAcks),
-		Async:        async,
-		Balancer:     balancer,
-		BatchSize:    opts.BatchSize,
-		BatchTimeout: opts.BatchTimeout,
-		WriteTimeout: opts.WriteTimeout,
-		ReadTimeout:  opts.ReadTimeout,
+		Addr:                   kafka.TCP(c.brokers...),
+		Topic:                  topic,
+		RequiredAcks:           kafka.RequiredAcks(opts.RequiredAcks),
+		Async:                  async,
+		AllowAutoTopicCreation: opts.AutoTopicCreation,
+		Balancer:               balancer,
+		BatchSize:              opts.BatchSize,
+		BatchTimeout:           opts.BatchTimeout,
+		WriteTimeout:           opts.WriteTimeout,
+		ReadTimeout:            opts.ReadTimeout,
 	}
 }

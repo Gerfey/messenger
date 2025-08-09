@@ -141,45 +141,6 @@ func (c *Consumer) startWorkerPool(
 		c.wg.Add(1)
 		go c.startWorker(ctx, jobs, handler)
 	}
-
-	if c.cfg.Options.Consumer.Pool.Dynamic {
-		go c.manageWorkerPool(ctx, jobs, handler)
-	}
-}
-
-func (c *Consumer) manageWorkerPool(
-	ctx context.Context,
-	jobs chan job,
-	handler func(context.Context, api.Envelope) error,
-) {
-	ticker := time.NewTicker(workerPoolCheckInterval)
-	defer ticker.Stop()
-
-	currentSize := c.cfg.Options.Consumer.Pool.Size
-	minSize := c.cfg.Options.Consumer.Pool.MinSize
-	maxSize := c.cfg.Options.Consumer.Pool.MaxSize
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if len(jobs) > currentSize && currentSize < maxSize {
-				toAdd := min(maxSize-currentSize, workerBatchSize)
-
-				for range toAdd {
-					c.wg.Add(1)
-					go c.startWorker(ctx, jobs, handler)
-				}
-
-				currentSize += toAdd
-				c.logger.DebugContext(ctx, "Increased worker pool size", "new_size", currentSize)
-			} else if len(jobs) == 0 && currentSize > minSize {
-				currentSize = max(currentSize-workerBatchSize, minSize)
-				c.logger.DebugContext(ctx, "Decreased worker pool size", "new_size", currentSize)
-			}
-		}
-	}
 }
 
 func (c *Consumer) startWorker(ctx context.Context, jobs chan job, handler func(context.Context, api.Envelope) error) {

@@ -6,13 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/builder"
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
+
 	"github.com/gerfey/messenger/core/serializer"
 
 	"github.com/gerfey/messenger/transport"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/tests/helpers"
 )
 

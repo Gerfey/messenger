@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
 )
 
 type MockProcessor struct {
@@ -27,7 +27,7 @@ func TestFileReader_Read(t *testing.T) {
 	reader := &config.FileReader{}
 
 	t.Run("read existing file", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 		content, err := reader.Read(path)
 
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestFileReader_Read(t *testing.T) {
 	})
 
 	t.Run("read with single processor", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 		processor := &MockProcessor{
 			ProcessFunc: func(content []byte) ([]byte, error) {
 				return append(content, []byte("\n# Processed")...), nil
@@ -59,7 +59,7 @@ func TestFileReader_Read(t *testing.T) {
 	})
 
 	t.Run("read with multiple processors", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 		processor1 := &MockProcessor{
 			ProcessFunc: func(content []byte) ([]byte, error) {
 				return append(content, []byte("\n# Processor1")...), nil
@@ -79,7 +79,7 @@ func TestFileReader_Read(t *testing.T) {
 	})
 
 	t.Run("read with processor error", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 		expectedErr := errors.New("processor error")
 		processor := &MockProcessor{
 			ProcessFunc: func(_ []byte) ([]byte, error) {
@@ -95,7 +95,7 @@ func TestFileReader_Read(t *testing.T) {
 	})
 
 	t.Run("read with multiple processors, second fails", func(t *testing.T) {
-		path := "../tests/fixtures/configs/valid_config.yaml"
+		path := "../../tests/fixtures/configs/valid_config.yaml"
 		expectedErr := errors.New("processor 2 error")
 		processor1 := &MockProcessor{
 			ProcessFunc: func(content []byte) ([]byte, error) {
@@ -135,7 +135,7 @@ func TestFileReader_Integration(t *testing.T) {
 	reader := &config.FileReader{}
 
 	t.Run("read config with env processor", func(t *testing.T) {
-		path := "../tests/fixtures/configs/config_with_env.yaml"
+		path := "../../tests/fixtures/configs/config_with_env.yaml"
 
 		t.Setenv("MEMORY_HOST", "localhost")
 		t.Setenv("CONSUMER_POOL_SIZE", "20")
@@ -150,7 +150,7 @@ func TestFileReader_Integration(t *testing.T) {
 	})
 
 	t.Run("read config with multiple processors", func(t *testing.T) {
-		path := "../tests/fixtures/configs/config_with_env.yaml"
+		path := "../../tests/fixtures/configs/config_with_env.yaml"
 
 		t.Setenv("MEMORY_HOST", "localhost")
 

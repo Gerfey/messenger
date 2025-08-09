@@ -15,12 +15,13 @@ transports:
 
       producer:
         async: true
-        required_acks: -1   # -1: all replicas (strongest durability), 0: no ack, 1: leader only
-        batch_size: 1000
-        batch_timeout: 20ms
+        auto_topic_creation: true
+        required_acks: 1   # -1: all replicas (strongest durability), 0: no ack, 1: leader only
+        batch_size: 256
+        batch_timeout: 10ms
         write_timeout: 10s
         read_timeout: 10s
-        balancer: least_bytes    # least_bytes, hash, round_robin
+        balancer: round_robin    # least_bytes, hash, round_robin
 
       consumer:
         offset:
@@ -36,7 +37,6 @@ transports:
           size: 3
           min_size: 2
           max_size: 10
-          dynamic: true
         session_timeout: 10s
         heartbeat_interval: 2s
 
@@ -44,4 +44,4 @@ transports:
         strategy: message_id    # none / message_id
 
 routing:
-  message.ExampleHelloMessage: kafka
+  "*message.ExampleHelloMessage": kafka

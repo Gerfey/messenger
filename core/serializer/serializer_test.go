@@ -6,9 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gerfey/messenger/core/builder"
+
 	"github.com/gerfey/messenger/core/serializer"
 
-	"github.com/gerfey/messenger/builder"
 	"github.com/gerfey/messenger/core/envelope"
 	"github.com/gerfey/messenger/tests/helpers"
 )

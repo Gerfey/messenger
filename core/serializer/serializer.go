@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
 	"github.com/gerfey/messenger/core/envelope"
 )
 

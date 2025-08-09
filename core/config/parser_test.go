@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
 )
 
 func TestYAMLParser_Parse(t *testing.T) {
@@ -179,7 +179,7 @@ func TestYAMLParser_Integration(t *testing.T) {
 	reader := &config.FileReader{}
 
 	t.Run("parse real config file", func(t *testing.T) {
-		content, err := reader.Read("../tests/fixtures/configs/valid_config.yaml")
+		content, err := reader.Read("../../tests/fixtures/configs/valid_config.yaml")
 		require.NoError(t, err)
 
 		var cfg config.MessengerConfig

@@ -116,10 +116,6 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		if writeErr := writer.WriteMessages(ctx, msg); writeErr != nil {
 			return fmt.Errorf("producer failed to write messages to topic %s: %w", topic, writeErr)
 		}
-
-		p.logger.DebugContext(ctx, "message sent to kafka topic",
-			slog.String("topic", topic),
-			slog.String("message_type", fmt.Sprintf("%T", env.Message())))
 	}
 
 	return nil
