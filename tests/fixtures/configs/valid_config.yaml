@@ -25,5 +25,5 @@ transports:
       consumer_pool_size: 5
 
 routing:
-  "test.TestMessage": default
-  "test.AsyncMessage": async
+  "*test.TestMessage": default
+  "*test.AsyncMessage": async

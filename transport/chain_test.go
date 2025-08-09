@@ -6,10 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
+
+	"github.com/gerfey/messenger/core/serializer"
+
 	"github.com/gerfey/messenger/transport"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/tests/helpers"
 )
 
@@ -23,7 +27,7 @@ func (f *mockFactory) Supports(dsn string) bool {
 	return dsn == f.supportedDSN
 }
 
-func (f *mockFactory) Create(name, _ string, _ config.OptionsConfig) (api.Transport, error) {
+func (f *mockFactory) Create(name, _ string, _ []byte, _ api.Serializer) (api.Transport, error) {
 	if f.createError != nil {
 		return nil, f.createError
 	}
@@ -81,10 +85,13 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
-		tr, err := chain.CreateTransport("test-transport", transportConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		tr, err := chain.CreateTransport("test-transport", transportConfig, ser)
 
 		require.NoError(t, err)
 		assert.Same(t, expectedTransport, tr)
@@ -103,10 +110,13 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
-		tr, err := chain.CreateTransport("first-transport", transportConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		tr, err := chain.CreateTransport("first-transport", transportConfig, ser)
 
 		require.NoError(t, err)
 		assert.Same(t, expectedTransport, tr)
@@ -119,10 +129,13 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "unknown://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
-		tr, err := chain.CreateTransport("unknown-transport", transportConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		tr, err := chain.CreateTransport("unknown-transport", transportConfig, ser)
 
 		require.Error(t, err)
 		assert.Nil(t, tr)
@@ -141,10 +154,13 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
-		tr, err := chain.CreateTransport("error-transport", transportConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		tr, err := chain.CreateTransport("error-transport", transportConfig, ser)
 
 		require.Error(t, err)
 		assert.Same(t, expectedError, err)
@@ -156,10 +172,13 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "test://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
-		tr, err := chain.CreateTransport("test-transport", transportConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		tr, err := chain.CreateTransport("test-transport", transportConfig, ser)
 
 		require.Error(t, err)
 		assert.Nil(t, tr)
@@ -179,10 +198,13 @@ func TestFactoryChain_CreateTransport(t *testing.T) {
 
 		transportConfig := config.TransportConfig{
 			DSN:     "redis://localhost",
-			Options: config.OptionsConfig{},
+			Options: map[string]any{},
 		}
 
-		tr, err := chain.CreateTransport("second-transport", transportConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		tr, err := chain.CreateTransport("second-transport", transportConfig, ser)
 
 		require.NoError(t, err)
 		assert.Same(t, expectedTransport, tr)
@@ -235,22 +257,25 @@ func TestFactoryChain_Integration(t *testing.T) {
 		memoryConfig := config.TransportConfig{DSN: "memory://"}
 		unknownConfig := config.TransportConfig{DSN: "unknown://localhost"}
 
-		amqpTransport, err := chain.CreateTransport("amqp", amqpConfig)
+		resolver := builder.NewResolver()
+		ser := serializer.NewSerializer(resolver)
+
+		amqpTransport, err := chain.CreateTransport("amqp", amqpConfig, ser)
 		require.NoError(t, err)
 		require.NotNil(t, amqpTransport)
 		assert.Equal(t, "amqp", amqpTransport.Name())
 
-		redisTransport, err := chain.CreateTransport("redis", redisConfig)
+		redisTransport, err := chain.CreateTransport("redis", redisConfig, ser)
 		require.NoError(t, err)
 		require.NotNil(t, redisTransport)
 		assert.Equal(t, "redis", redisTransport.Name())
 
-		memoryTransport, err := chain.CreateTransport("memory", memoryConfig)
+		memoryTransport, err := chain.CreateTransport("memory", memoryConfig, ser)
 		require.NoError(t, err)
 		require.NotNil(t, memoryTransport)
 		assert.Equal(t, "memory", memoryTransport.Name())
 
-		unknownTransport, err := chain.CreateTransport("unknown", unknownConfig)
+		unknownTransport, err := chain.CreateTransport("unknown", unknownConfig, ser)
 		require.Error(t, err)
 		assert.Nil(t, unknownTransport)
 

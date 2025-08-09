@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gerfey/messenger/builder"
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
 	"github.com/gerfey/messenger/examples/messenger/handler"
 	"github.com/gerfey/messenger/examples/messenger/message"
 	"github.com/gerfey/messenger/examples/messenger/middleware"

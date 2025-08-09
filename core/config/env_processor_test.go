@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
 )
 
 func TestEnvVarProcessor_Process(t *testing.T) {

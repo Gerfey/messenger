@@ -10,10 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
+
 	"github.com/gerfey/messenger/tests/fixtures/handlers"
 
-	"github.com/gerfey/messenger/builder"
-	"github.com/gerfey/messenger/config"
 	testHelpers "github.com/gerfey/messenger/tests/helpers"
 )
 

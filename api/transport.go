@@ -3,8 +3,6 @@ package api
 import (
 	"context"
 	"reflect"
-
-	"github.com/gerfey/messenger/config"
 )
 
 type Transport interface {
@@ -35,9 +33,13 @@ type SenderLocator interface {
 
 type TransportFactory interface {
 	Supports(string) bool
-	Create(string, string, config.OptionsConfig) (Transport, error)
+	Create(string, string, []byte, Serializer) (Transport, error)
 }
 
 type RoutedMessage interface {
 	RoutingKey() string
+}
+
+type Setupable interface {
+	Setup(ctx context.Context) error
 }

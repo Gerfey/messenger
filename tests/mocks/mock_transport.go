@@ -14,7 +14,6 @@ import (
 	reflect "reflect"
 
 	api "github.com/gerfey/messenger/api"
-	config "github.com/gerfey/messenger/config"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -355,7 +354,7 @@ func (m *MockTransportFactory) EXPECT() *MockTransportFactoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockTransportFactory) Create(arg0, arg1 string, arg2 config.OptionsConfig) (api.Transport, error) {
+func (m *MockTransportFactory) Create(arg0, arg1 string, arg2 []byte) (api.Transport, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.Transport)

@@ -15,7 +15,10 @@ transports:
       max_delay: 5s
     options:
       auto_setup: true
-      consumer_pool_size: 10
+      pool:
+        size: 10
+        min_size: 5
+        max_size: 20
       exchange:
         name: test.exchange
         type: topic
@@ -25,4 +28,4 @@ transports:
             - test_routing_key
 
 routing:
-  message.ExampleHelloMessage: amqp
+  "*message.ExampleHelloMessage": amqp

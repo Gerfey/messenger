@@ -10,4 +10,4 @@ transports:
     dsn: "in-memory://"
 
 routing:
-  helpers.TestMessage: in-memory
+  "*helpers.TestMessage": in-memory

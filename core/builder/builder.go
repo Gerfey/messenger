@@ -8,8 +8,8 @@ import (
 
 	"github.com/gerfey/messenger"
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 	"github.com/gerfey/messenger/core/bus"
+	"github.com/gerfey/messenger/core/config"
 	"github.com/gerfey/messenger/core/event"
 	"github.com/gerfey/messenger/core/handler"
 	"github.com/gerfey/messenger/core/listener"
@@ -17,10 +17,13 @@ import (
 	"github.com/gerfey/messenger/core/middleware/implementation"
 	"github.com/gerfey/messenger/core/retry"
 	"github.com/gerfey/messenger/core/routing"
+	"github.com/gerfey/messenger/core/serializer"
 	"github.com/gerfey/messenger/core/stamps"
 	"github.com/gerfey/messenger/transport"
 	"github.com/gerfey/messenger/transport/amqp"
 	"github.com/gerfey/messenger/transport/inmemory"
+	"github.com/gerfey/messenger/transport/kafka"
+	"github.com/gerfey/messenger/transport/redis"
 	"github.com/gerfey/messenger/transport/sync"
 )
 
@@ -31,6 +34,7 @@ type Builder struct {
 	handlersLocator   api.HandlerLocator
 	senderLocator     api.SenderLocator
 	middlewareLocator api.MiddlewareLocator
+	serializerLocator api.SerializerLocator
 	busLocator        api.BusLocator
 	eventDispatcher   api.EventDispatcher
 	logger            *slog.Logger
@@ -40,11 +44,14 @@ func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 	resolver := NewResolver()
 
 	busLocator := bus.NewLocator()
+	serializerLocator := serializer.NewSerializerLocator()
 
 	tf := transport.NewFactoryChain(
-		amqp.NewTransportFactory(logger, resolver),
-		inmemory.NewTransportFactory(logger, resolver),
-		sync.NewTransportFactory(logger, busLocator),
+		amqp.NewTransportFactory(logger),
+		inmemory.NewTransportFactory(logger),
+		sync.NewTransportFactory(busLocator),
+		kafka.NewTransportFactory(logger),
+		redis.NewTransportFactory(logger),
 	)
 
 	return &Builder{
@@ -54,6 +61,7 @@ func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 		handlersLocator:   handler.NewHandlerLocator(),
 		senderLocator:     transport.NewSenderLocator(),
 		middlewareLocator: middleware.NewMiddlewareLocator(),
+		serializerLocator: serializerLocator,
 		busLocator:        busLocator,
 		eventDispatcher:   event.NewEventDispatcher(logger),
 		logger:            logger,
@@ -69,11 +77,11 @@ func (b *Builder) RegisterHandler(handler any) error {
 		return fmt.Errorf("register handler: %w", err)
 	}
 
-	for _, h := range b.handlersLocator.GetAll() {
-		b.resolver.Register(h.InputType.String(), h.InputType)
-	}
-
 	return nil
+}
+
+func (b *Builder) RegisterSerializer(name string, sz api.Serializer) {
+	b.serializerLocator.Register(name, sz)
 }
 
 func (b *Builder) RegisterMiddleware(name string, mw api.Middleware) {
@@ -95,7 +103,13 @@ func (b *Builder) RegisterListener(event any, listener any) {
 }
 
 func (b *Builder) Build() (api.Messenger, error) {
+	for _, h := range b.handlersLocator.GetAll() {
+		b.resolver.Register(h.InputType.String(), h.InputType)
+	}
+
 	b.registerStamps()
+
+	b.serializerLocator.Register("default.transport.serializer", serializer.NewSerializer(b.resolver))
 
 	if err := b.setupBuses(); err != nil {
 		return nil, err
@@ -117,6 +131,8 @@ func (b *Builder) setupBuses() error {
 		}
 
 		chain = append(chain, implementation.NewAddBusNameMiddleware(name))
+		chain = append(chain, implementation.NewAddMessageIDMiddleware())
+
 		chain = append(
 			chain,
 			implementation.NewSendMessageMiddleware(b.logger, b.senderLocator, b.eventDispatcher),
@@ -164,7 +180,7 @@ func (b *Builder) setupRouting() (api.Router, error) {
 	router := routing.NewRouter()
 
 	for msgTypeStr, transportName := range b.cfg.Routing {
-		t, err := b.handlersLocator.ResolveMessageType(msgTypeStr)
+		t, err := b.resolver.ResolveMessageType(msgTypeStr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve message type '%s' in routing configuration: %w", msgTypeStr, err)
 		}
@@ -214,7 +230,17 @@ func (b *Builder) createTransports(manager *transport.Manager) (map[string]api.T
 	b.createdSyncTransport(createdTransports)
 
 	for name, tCfg := range b.cfg.Transports {
-		tr, err := b.transportFactory.CreateTransport(name, tCfg)
+		serializerName := tCfg.Serializer
+		if serializerName == "" {
+			serializerName = b.cfg.DefaultSerializer
+		}
+
+		sz, err := b.serializerLocator.Get(serializerName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("serializer %q not found for transport %q: %w", serializerName, name, err)
+		}
+
+		tr, err := b.transportFactory.CreateTransport(name, tCfg, sz)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create transport '%s': %w", name, err)
 		}
@@ -269,15 +295,15 @@ func (b *Builder) setupRetryListeners(createdTransports map[string]api.Transport
 func (b *Builder) registerStamps() {
 	b.resolver.RegisterStamp(stamps.BusNameStamp{})
 	b.resolver.RegisterStamp(stamps.RedeliveryStamp{})
+	b.resolver.RegisterStamp(stamps.MessageIDStamp{})
 }
 
 func (b *Builder) createdSyncTransport(createdTransports map[string]api.Transport) {
 	cfg := config.TransportConfig{
-		DSN:     "sync://",
-		Options: config.OptionsConfig{},
+		DSN: "sync://",
 	}
 
-	if syncTransport, err := b.transportFactory.CreateTransport("sync", cfg); err == nil {
+	if syncTransport, err := b.transportFactory.CreateTransport("sync", cfg, nil); err == nil {
 		createdTransports["sync"] = syncTransport
 	}
 }

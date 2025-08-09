@@ -19,9 +19,7 @@ import (
 
 func TestNewTransport(t *testing.T) {
 	t.Run("create transport with config", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		require.NotNil(t, transport)
 		assert.IsType(t, &inmemory.Transport{}, transport)
@@ -29,27 +27,23 @@ func TestNewTransport(t *testing.T) {
 	})
 
 	t.Run("create transport with empty config", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{}
-
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("in-memory")
 
 		require.NotNil(t, transport)
-		assert.Empty(t, transport.Name())
+		assert.Equal(t, "in-memory", transport.Name())
 	})
 }
 
 func TestTransport_Name(t *testing.T) {
 	t.Run("get transport name", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "my-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("my-transport")
 
 		name := transport.Name()
 		assert.Equal(t, "my-transport", name)
 	})
 
 	t.Run("get empty transport name", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: ""}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("")
 
 		name := transport.Name()
 		assert.Empty(t, name)
@@ -58,8 +52,7 @@ func TestTransport_Name(t *testing.T) {
 
 func TestTransport_Send(t *testing.T) {
 	t.Run("send single message", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg).(*inmemory.Transport)
+		transport := inmemory.NewTransport("test-transport").(*inmemory.Transport)
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -70,8 +63,7 @@ func TestTransport_Send(t *testing.T) {
 	})
 
 	t.Run("send multiple messages", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg).(*inmemory.Transport)
+		transport := inmemory.NewTransport("test-transport").(*inmemory.Transport)
 
 		msg1 := &helpers.TestMessage{Content: "test1"}
 		msg2 := &helpers.TestMessage{Content: "test2"}
@@ -91,8 +83,7 @@ func TestTransport_Send(t *testing.T) {
 	})
 
 	t.Run("send with cancelled context", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -107,8 +98,7 @@ func TestTransport_Send(t *testing.T) {
 
 func TestTransport_Receive(t *testing.T) {
 	t.Run("receive single message", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -139,8 +129,7 @@ func TestTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("receive multiple messages", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		msg1 := &helpers.TestMessage{Content: "test1"}
 		msg2 := &helpers.TestMessage{Content: "test2"}
@@ -170,8 +159,7 @@ func TestTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("receive with handler error", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		msg := &helpers.TestMessage{Content: "test"}
 		env := envelope.NewEnvelope(msg)
@@ -192,8 +180,7 @@ func TestTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("receive with cancelled context", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
@@ -208,8 +195,7 @@ func TestTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("receive with empty queue waits", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "test-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("test-transport")
 
 		handler := func(_ context.Context, _ api.Envelope) error {
 			return nil
@@ -229,8 +215,7 @@ func TestTransport_Receive(t *testing.T) {
 
 func TestTransport_Integration(t *testing.T) {
 	t.Run("full send and receive workflow", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "integration-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("integration-transport")
 
 		messages := []*helpers.TestMessage{
 			{Content: "message1"},
@@ -269,8 +254,7 @@ func TestTransport_Integration(t *testing.T) {
 	})
 
 	t.Run("concurrent send and receive", func(t *testing.T) {
-		cfg := inmemory.TransportConfig{Name: "concurrent-transport"}
-		transport := inmemory.NewTransport(cfg)
+		transport := inmemory.NewTransport("concurrent-transport")
 
 		go func() {
 			for range 5 {

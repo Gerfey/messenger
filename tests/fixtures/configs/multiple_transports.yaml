@@ -12,4 +12,4 @@ transports:
     dsn: "in-memory://"
 
 routing:
-  helpers.TestMessage: in-memory1
+  "*helpers.TestMessage": in-memory1

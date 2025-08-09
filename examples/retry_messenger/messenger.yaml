@@ -34,4 +34,4 @@ transports:
         failed_messages_queue: ~
 
 routing:
-  message.ExampleHelloMessage: amqp
+  "*message.ExampleHelloMessage": amqp

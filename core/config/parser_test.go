@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/config"
 )
 
 func TestYAMLParser_Parse(t *testing.T) {
@@ -42,8 +42,16 @@ transports:
 
 		require.NoError(t, err)
 		assert.Equal(t, "custom", cfg.DefaultBus)
-		assert.True(t, cfg.Transports["default"].Options.AutoSetup)
-		assert.Equal(t, 10, cfg.Transports["default"].Options.ConsumerPoolSize)
+
+		autoSetup, ok := cfg.Transports["default"].Options["auto_setup"]
+		if ok && autoSetup != nil {
+			assert.True(t, autoSetup.(bool))
+		}
+
+		consumerPoolSize, ok := cfg.Transports["default"].Options["consumer_pool_size"]
+		if ok && consumerPoolSize != nil {
+			assert.Equal(t, 10, consumerPoolSize)
+		}
 	})
 
 	t.Run("parse invalid yaml", func(t *testing.T) {
@@ -86,10 +94,29 @@ transports:
 		err := parser.Parse(content, &cfg)
 
 		require.NoError(t, err)
-		assert.Equal(t, "messages", cfg.Transports["amqp"].Options.Exchange.Name)
-		assert.Equal(t, "topic", cfg.Transports["amqp"].Options.Exchange.Type)
-		assert.True(t, cfg.Transports["amqp"].Options.Exchange.Durable)
-		assert.False(t, cfg.Transports["amqp"].Options.Exchange.AutoDelete)
+
+		exchangeOptions, ok := cfg.Transports["amqp"].Options["exchange"].(map[string]interface{})
+		require.True(t, ok)
+
+		name, ok := exchangeOptions["name"]
+		if ok && name != nil {
+			assert.Equal(t, "messages", name)
+		}
+
+		exchangeType, ok := exchangeOptions["type"]
+		if ok && exchangeType != nil {
+			assert.Equal(t, "topic", exchangeType)
+		}
+
+		durable, ok := exchangeOptions["durable"]
+		if ok && durable != nil {
+			assert.True(t, durable.(bool))
+		}
+
+		autoDelete, ok := exchangeOptions["auto_delete"]
+		if ok && autoDelete != nil {
+			assert.False(t, autoDelete.(bool))
+		}
 	})
 
 	t.Run("parse yaml with queue options", func(t *testing.T) {
@@ -107,9 +134,23 @@ transports:
 		err := parser.Parse(content, &cfg)
 
 		require.NoError(t, err)
-		assert.Contains(t, cfg.Transports["amqp"].Options.Queues, "default")
-		assert.Contains(t, cfg.Transports["amqp"].Options.Queues["default"].BindingKeys, "#")
-		assert.True(t, cfg.Transports["amqp"].Options.Queues["default"].Durable)
+
+		queuesOptions, ok := cfg.Transports["amqp"].Options["queues"].(map[string]interface{})
+		require.True(t, ok)
+		assert.Contains(t, queuesOptions, "default")
+
+		defaultQueue, ok := queuesOptions["default"].(map[string]interface{})
+		require.True(t, ok)
+
+		bindingKeys, ok := defaultQueue["binding_keys"].([]interface{})
+		if ok && bindingKeys != nil {
+			assert.Contains(t, bindingKeys, "#")
+		}
+
+		durable, ok := defaultQueue["durable"]
+		if ok && durable != nil {
+			assert.True(t, durable.(bool))
+		}
 	})
 
 	t.Run("parse yaml with retry strategy", func(t *testing.T) {
@@ -138,7 +179,7 @@ func TestYAMLParser_Integration(t *testing.T) {
 	reader := &config.FileReader{}
 
 	t.Run("parse real config file", func(t *testing.T) {
-		content, err := reader.Read("../tests/fixtures/configs/valid_config.yaml")
+		content, err := reader.Read("../../tests/fixtures/configs/valid_config.yaml")
 		require.NoError(t, err)
 
 		var cfg config.MessengerConfig
