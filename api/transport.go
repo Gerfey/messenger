@@ -8,6 +8,7 @@ import (
 type Transport interface {
 	Sender
 	Receiver
+	Closer
 }
 
 type Sender interface {
@@ -19,9 +20,32 @@ type Receiver interface {
 	Receive(context.Context, func(context.Context, Envelope) error) error
 }
 
+type Closer interface {
+	Close() error
+}
+
+type Producer interface {
+	Send(context.Context, Envelope) error
+}
+
+type Consumer interface {
+	Consume(context.Context, func(context.Context, Envelope) error) error
+}
+
+type Connection interface {
+	Connect() error
+	IsConnect() bool
+	Close() error
+}
+
 type RetryableTransport interface {
 	Transport
 	Retry(context.Context, Envelope) error
+}
+
+type SetupableTransport interface {
+	Transport
+	Setup(ctx context.Context) error
 }
 
 type SenderLocator interface {
@@ -38,8 +62,4 @@ type TransportFactory interface {
 
 type RoutedMessage interface {
 	RoutingKey() string
-}
-
-type Setupable interface {
-	Setup(ctx context.Context) error
 }

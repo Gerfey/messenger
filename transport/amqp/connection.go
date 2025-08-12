@@ -13,9 +13,9 @@ type Connection struct {
 	lock sync.Mutex
 }
 
-func NewConnection(dsn string) (*Connection, error) {
+func NewConnection(dsn string) (ConnectionAMQP, error) {
 	conn := &Connection{dsn: dsn}
-	err := conn.connect()
+	err := conn.Connect()
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (c *Connection) Channel() (*amqp.Channel, error) {
 	defer c.lock.Unlock()
 
 	if c.conn == nil || c.conn.IsClosed() {
-		if err := c.connect(); err != nil {
+		if err := c.Connect(); err != nil {
 			return nil, err
 		}
 	}
@@ -41,7 +41,7 @@ func (c *Connection) Channel() (*amqp.Channel, error) {
 	return ch, nil
 }
 
-func (c *Connection) connect() error {
+func (c *Connection) Connect() error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -53,4 +53,12 @@ func (c *Connection) connect() error {
 	c.conn = conn
 
 	return nil
+}
+
+func (c *Connection) Close() error {
+	return c.conn.Close()
+}
+
+func (c *Connection) IsConnect() bool {
+	return c.conn != nil && !c.conn.IsClosed()
 }

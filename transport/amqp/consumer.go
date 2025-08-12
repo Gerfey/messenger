@@ -3,9 +3,7 @@ package amqp
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync"
-	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -14,30 +12,30 @@ import (
 )
 
 const (
-	defaultPoolSize         = 10
-	workerPoolCheckInterval = 30 * time.Second
-	workerBatchSize         = 5
+	defaultPoolSize = 10
 )
 
 type Consumer struct {
-	conn       *Connection
-	cfg        TransportConfig
+	config     TransportConfig
+	connection ConnectionAMQP
 	serializer api.Serializer
 	wg         sync.WaitGroup
-	logger     *slog.Logger
 }
 
-func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serializer) *Consumer {
+func NewConsumer(config TransportConfig, connection ConnectionAMQP, serializer api.Serializer) (api.Consumer, error) {
 	return &Consumer{
-		conn:       conn,
-		cfg:        cfg,
+		config:     config,
+		connection: connection,
 		serializer: serializer,
-		logger:     slog.Default(),
-	}
+	}, nil
 }
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
-	ch, err := c.conn.Channel()
+	if !c.connection.IsConnect() {
+		return fmt.Errorf("amqp connection is not available")
+	}
+
+	ch, err := c.connection.Channel()
 	if err != nil {
 		return fmt.Errorf("failed to create AMQP channel for consumer: %w", err)
 	}
@@ -65,7 +63,7 @@ func (c *Consumer) startWorkerPool(
 	jobs chan job,
 	handler func(context.Context, api.Envelope) error,
 ) {
-	poolSize := c.cfg.Options.Pool.Size
+	poolSize := c.config.Options.Pool.Size
 	if poolSize <= 0 {
 		poolSize = defaultPoolSize
 	}
@@ -97,7 +95,7 @@ func (c *Consumer) startWorker(
 }
 
 func (c *Consumer) startQueueConsumers(ctx context.Context, ch *amqp.Channel, jobs chan job) error {
-	for queueName := range c.cfg.Options.Queues {
+	for queueName := range c.config.Options.Queues {
 		msgs, consumeErr := ch.ConsumeWithContext(
 			ctx,
 			queueName,
@@ -152,7 +150,7 @@ func (c *Consumer) handleDelivery(
 	}
 
 	env = env.WithStamp(stamps.ReceivedStamp{
-		Transport: c.cfg.Name,
+		Transport: c.config.Name,
 	})
 
 	err = handler(ctx, env)
