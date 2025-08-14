@@ -45,3 +45,7 @@ func (t *Transport) Receive(_ context.Context, _ func(context.Context, api.Envel
 func (t *Transport) Name() string {
 	return "sync"
 }
+
+func (t *Transport) Close() error {
+	return nil
+}

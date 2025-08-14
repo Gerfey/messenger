@@ -1,7 +1,6 @@
 package inmemory_test
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,8 +18,7 @@ func TestNewTransportFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-	factory := inmemory.NewTransportFactory(logger)
+	factory := inmemory.NewTransportFactory()
 
 	assert.NotNil(t, factory)
 	assert.IsType(t, &inmemory.TransportFactory{}, factory)
@@ -30,8 +28,7 @@ func TestTransportFactory_Supports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-	factory := inmemory.NewTransportFactory(logger)
+	factory := inmemory.NewTransportFactory()
 
 	testCases := []struct {
 		name     string
@@ -72,9 +69,8 @@ func TestTransportFactory_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := inmemory.NewTransportFactory(logger)
+	factory := inmemory.NewTransportFactory()
 
 	name := "test-inmemory"
 	dsn := "in-memory://test"

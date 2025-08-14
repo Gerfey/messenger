@@ -64,3 +64,12 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 		}
 	}
 }
+
+func (t *Transport) Close() error {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	t.queue = nil
+
+	return nil
+}

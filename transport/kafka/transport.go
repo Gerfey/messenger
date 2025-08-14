@@ -3,23 +3,27 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/url"
 	"strings"
+
+	"github.com/segmentio/kafka-go"
 
 	"github.com/gerfey/messenger/api"
 )
 
-type Transport struct {
-	cfg        TransportConfig
-	producer   *Producer
-	consumer   *Consumer
-	serializer api.Serializer
-	logger     *slog.Logger
-	conn       *Connection
+type ConnectionKafka interface {
+	CreateReader(kafka.ReaderConfig) *kafka.Reader
+	CreateWriter(string, ProducerOptionsConfig, bool, kafka.Balancer) *kafka.Writer
 }
 
-func NewTransport(cfg TransportConfig, logger *slog.Logger, ser api.Serializer) (api.Transport, error) {
+type Transport struct {
+	cfg        TransportConfig
+	producer   api.Producer
+	consumer   api.Consumer
+	connection ConnectionKafka
+}
+
+func NewTransport(cfg TransportConfig, serializer api.Serializer) (api.Transport, error) {
 	u, err := url.Parse(cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse dsn: %w", err)
@@ -27,27 +31,26 @@ func NewTransport(cfg TransportConfig, logger *slog.Logger, ser api.Serializer) 
 
 	brokers := strings.Split(u.Host, ",")
 
-	conn, err := NewConnection(brokers)
-	if err != nil {
-		logger.Error("failed to connect to Kafka brokers", "error", err)
-
-		return nil, err
+	connection, errConnection := NewConnection(brokers)
+	if errConnection != nil {
+		return nil, fmt.Errorf("failed to create connection: %w", errConnection)
 	}
 
-	producer, err := NewProducer(cfg, ser, conn, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create kafka producer: %w", err)
+	producer, errProducer := NewProducer(cfg, connection, serializer)
+	if errProducer != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", errProducer)
 	}
 
-	consumer := NewConsumer(cfg, ser, conn, logger)
+	consumer, errConsumer := NewConsumer(cfg, connection, serializer)
+	if errConsumer != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", errConsumer)
+	}
 
 	return &Transport{
 		cfg:        cfg,
 		producer:   producer,
 		consumer:   consumer,
-		serializer: ser,
-		logger:     logger,
-		conn:       conn,
+		connection: connection,
 	}, nil
 }
 

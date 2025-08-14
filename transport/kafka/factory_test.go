@@ -1,7 +1,6 @@
 package kafka_test
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,9 +18,7 @@ func TestNewTransportFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-
-	factory := kafka.NewTransportFactory(logger)
+	factory := kafka.NewTransportFactory()
 
 	assert.NotNil(t, factory)
 	assert.IsType(t, &kafka.TransportFactory{}, factory)
@@ -65,8 +62,7 @@ func TestTransportFactory_Supports(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			logger := slog.Default()
-			factory := kafka.NewTransportFactory(logger)
+			factory := kafka.NewTransportFactory()
 
 			result := factory.Supports(tc.dsn)
 			assert.Equal(t, tc.expected, result)
@@ -78,9 +74,8 @@ func TestTransportFactory_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := kafka.NewTransportFactory(logger)
+	factory := kafka.NewTransportFactory()
 
 	name := "test-kafka"
 	dsn := "kafka://non-existent-host:9092"

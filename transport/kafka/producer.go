@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -15,29 +14,27 @@ import (
 )
 
 type Producer struct {
-	cfg        TransportConfig
+	config     TransportConfig
 	serializer api.Serializer
-	conn       *Connection
-	logger     *slog.Logger
+	connection ConnectionKafka
 	writers    map[string]*kafka.Writer
 	mu         sync.RWMutex
 }
 
-func NewProducer(cfg TransportConfig, ser api.Serializer, conn *Connection, logger *slog.Logger) (*Producer, error) {
+func NewProducer(config TransportConfig, connection ConnectionKafka, serializer api.Serializer) (api.Producer, error) {
 	p := &Producer{
-		cfg:        cfg,
-		serializer: ser,
-		conn:       conn,
-		logger:     logger,
+		config:     config,
+		connection: connection,
+		serializer: serializer,
 		writers:    make(map[string]*kafka.Writer),
 	}
 
-	if len(cfg.Options.Topics) == 0 {
+	if len(config.Options.Topics) == 0 {
 		return nil, errors.New("no topics configured for kafka transport")
 	}
 
 	var balancer kafka.Balancer = &kafka.LeastBytes{}
-	switch cfg.Options.Producer.Balancer {
+	switch config.Options.Producer.Balancer {
 	case "hash":
 		balancer = &kafka.Hash{}
 	case "round_robin":
@@ -46,15 +43,15 @@ func NewProducer(cfg TransportConfig, ser api.Serializer, conn *Connection, logg
 		balancer = &kafka.LeastBytes{}
 	}
 
-	if cfg.Options.Key.Strategy != "none" {
+	if config.Options.Key.Strategy != "none" {
 		balancer = &kafka.Hash{}
 	}
 
-	for _, topic := range cfg.Options.Topics {
-		writer := conn.CreateWriter(
+	for _, topic := range config.Options.Topics {
+		writer := connection.CreateWriter(
 			topic,
-			cfg.Options.Producer,
-			cfg.Options.Producer.Async,
+			config.Options.Producer,
+			config.Options.Producer.Async,
 			balancer,
 		)
 
@@ -62,24 +59,6 @@ func NewProducer(cfg TransportConfig, ser api.Serializer, conn *Connection, logg
 	}
 
 	return p, nil
-}
-
-func (p *Producer) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	var errs []error
-	for topic, writer := range p.writers {
-		if err := writer.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("failed to close writer for topic %s: %w", topic, err))
-		}
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("errors closing writers: %v", errs)
-	}
-
-	return nil
 }
 
 func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
@@ -107,7 +86,7 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	for _, topic := range p.cfg.Options.Topics {
+	for _, topic := range p.config.Options.Topics {
 		writer, exists := p.writers[topic]
 		if !exists {
 			return fmt.Errorf("writer for topic %s not found", topic)
@@ -121,8 +100,26 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 	return nil
 }
 
+func (p *Producer) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	var errs []error
+	for topic, writer := range p.writers {
+		if err := writer.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close writer for topic %s: %w", topic, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors closing writers: %v", errs)
+	}
+
+	return nil
+}
+
 func (p *Producer) extractMessageKey(env api.Envelope) ([]byte, error) {
-	if p.cfg.Options.Key.Strategy != "message_id" {
+	if p.config.Options.Key.Strategy != "message_id" {
 		return nil, nil
 	}
 

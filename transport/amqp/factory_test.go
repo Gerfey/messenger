@@ -1,7 +1,6 @@
 package amqp_test
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,9 +18,7 @@ func TestNewTransportFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-
-	factory := amqp.NewTransportFactory(logger)
+	factory := amqp.NewTransportFactory()
 
 	assert.NotNil(t, factory)
 	assert.IsType(t, &amqp.TransportFactory{}, factory)
@@ -65,8 +62,7 @@ func TestTransportFactory_Supports(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			logger := slog.Default()
-			factory := amqp.NewTransportFactory(logger)
+			factory := amqp.NewTransportFactory()
 
 			got := factory.Supports(tt.dsn)
 			assert.Equal(t, tt.want, got)
@@ -78,9 +74,8 @@ func TestTransportFactory_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := amqp.NewTransportFactory(logger)
+	factory := amqp.NewTransportFactory()
 
 	name := "test-amqp"
 

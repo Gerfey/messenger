@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"regexp"
 
 	"github.com/redis/go-redis/v9"
@@ -15,19 +14,17 @@ import (
 )
 
 type Producer struct {
-	cfg        TransportConfig
+	config     TransportConfig
 	serializer api.Serializer
-	conn       *Connection
-	logger     *slog.Logger
+	connection ConnectionRedis
 }
 
-func NewProducer(cfg TransportConfig, ser api.Serializer, conn *Connection, logger *slog.Logger) *Producer {
+func NewProducer(config TransportConfig, serializer api.Serializer, connection ConnectionRedis) (api.Producer, error) {
 	return &Producer{
-		cfg:        cfg,
-		serializer: ser,
-		conn:       conn,
-		logger:     logger,
-	}
+		config:     config,
+		serializer: serializer,
+		connection: connection,
+	}, nil
 }
 
 func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
@@ -44,7 +41,7 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		data["header_"+k] = v
 	}
 
-	stream := p.cfg.Options.Stream
+	stream := p.config.Options.Stream
 	if stream == "" {
 		return errors.New("redis: stream name is not configured")
 	}
@@ -56,7 +53,7 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		}
 	}
 
-	_, err = p.conn.Client().XAdd(ctx, &redis.XAddArgs{
+	_, err = p.connection.Client().XAdd(ctx, &redis.XAddArgs{
 		ID:     id,
 		Stream: stream,
 		Values: data,
@@ -65,10 +62,10 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		return fmt.Errorf("redis: XADD failed: %w", err)
 	}
 
-	p.logger.DebugContext(ctx, "message sent to redis stream",
-		slog.String("stream", stream),
-		slog.String("message_type", fmt.Sprintf("%T", env.Message())))
+	return nil
+}
 
+func (p *Producer) Close() error {
 	return nil
 }
 

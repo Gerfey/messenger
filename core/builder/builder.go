@@ -42,22 +42,21 @@ type Builder struct {
 
 func NewBuilder(cfg *config.MessengerConfig, logger *slog.Logger) api.Builder {
 	resolver := NewResolver()
-
 	busLocator := bus.NewLocator()
 	serializerLocator := serializer.NewSerializerLocator()
 
-	tf := transport.NewFactoryChain(
-		amqp.NewTransportFactory(logger),
-		inmemory.NewTransportFactory(logger),
+	transportFactory := transport.NewFactoryChain(
 		sync.NewTransportFactory(busLocator),
-		kafka.NewTransportFactory(logger),
-		redis.NewTransportFactory(logger),
+		inmemory.NewTransportFactory(),
+		amqp.NewTransportFactory(),
+		kafka.NewTransportFactory(),
+		redis.NewTransportFactory(),
 	)
 
 	return &Builder{
 		cfg:               cfg,
 		resolver:          resolver,
-		transportFactory:  tf,
+		transportFactory:  transportFactory,
 		handlersLocator:   handler.NewHandlerLocator(),
 		senderLocator:     transport.NewSenderLocator(),
 		middlewareLocator: middleware.NewMiddlewareLocator(),

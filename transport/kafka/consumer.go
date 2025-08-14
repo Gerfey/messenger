@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -16,29 +15,21 @@ import (
 const (
 	minBytes          = 10e3 // 10KB
 	maxBytes          = 10e6 // 10MB
-	sessionTimeout    = 10 * time.Second
 	rebalanceTimeout  = 5 * time.Second
-	heartbeatInterval = 2 * time.Second
 	defaultPoolSize   = 10
 	readLagInterval   = -1
-
-	workerPoolCheckInterval = 30 * time.Second
-	workerBatchSize         = 5
-	errorBackoffDelay       = 100 * time.Millisecond
+	errorBackoffDelay = 100 * time.Millisecond
 )
 
 type Consumer struct {
-	cfg             TransportConfig
+	config          TransportConfig
 	serializer      api.Serializer
-	conn            *Connection
+	connection      ConnectionKafka
 	readers         []*kafka.Reader
 	wg              sync.WaitGroup
-	ctx             context.Context
-	cancel          context.CancelFunc
 	batchMutex      sync.Mutex
 	batchMessages   []kafka.Message
 	deferredCommits sync.Map
-	logger          *slog.Logger
 }
 
 type messageWithReader struct {
@@ -46,36 +37,31 @@ type messageWithReader struct {
 	reader  *kafka.Reader
 }
 
-func NewConsumer(cfg TransportConfig, ser api.Serializer, conn *Connection, logger *slog.Logger) *Consumer {
-	ctx, cancel := context.WithCancel(context.Background())
-
+func NewConsumer(config TransportConfig, connection ConnectionKafka, serializer api.Serializer) (api.Consumer, error) {
 	return &Consumer{
-		cfg:        cfg,
-		serializer: ser,
-		conn:       conn,
+		config:     config,
+		connection: connection,
+		serializer: serializer,
 		readers:    make([]*kafka.Reader, 0),
-		ctx:        ctx,
-		cancel:     cancel,
-		logger:     logger,
-	}
+	}, nil
 }
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
-	for _, topic := range c.cfg.Options.Topics {
+	for _, topic := range c.config.Options.Topics {
 		readerConfig := kafka.ReaderConfig{
-			GroupID:           c.cfg.Options.Group,
+			GroupID:           c.config.Options.Group,
 			Topic:             topic,
-			CommitInterval:    c.cfg.Options.Consumer.Commit.Interval,
+			CommitInterval:    c.config.Options.Consumer.Commit.Interval,
 			MinBytes:          minBytes,
 			MaxBytes:          maxBytes,
 			ReadLagInterval:   readLagInterval,
-			SessionTimeout:    c.cfg.Options.Consumer.SessionTimeout,
+			SessionTimeout:    c.config.Options.Consumer.SessionTimeout,
 			RebalanceTimeout:  rebalanceTimeout,
-			HeartbeatInterval: c.cfg.Options.Consumer.HeartbeatInterval,
+			HeartbeatInterval: c.config.Options.Consumer.HeartbeatInterval,
 			MaxWait:           time.Second,
 		}
 
-		switch c.cfg.Options.Consumer.Rebalance.Strategy {
+		switch c.config.Options.Consumer.Rebalance.Strategy {
 		case "range":
 			readerConfig.GroupBalancers = []kafka.GroupBalancer{kafka.RangeGroupBalancer{}}
 		case "roundrobin":
@@ -83,7 +69,7 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 		}
 
 		c.configureOffset(&readerConfig)
-		reader := c.conn.CreateReader(readerConfig)
+		reader := c.connection.CreateReader(readerConfig)
 		c.readers = append(c.readers, reader)
 	}
 
@@ -98,30 +84,35 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 		}(reader)
 	}
 
-	if c.cfg.Options.Consumer.Commit.Strategy == "batch" {
+	if c.config.Options.Consumer.Commit.Strategy == "batch" {
 		go c.startBatchCommitter(ctx)
 	}
 
 	<-ctx.Done()
 
-	for _, reader := range c.readers {
-		if err := reader.Close(); err != nil {
-			c.logger.ErrorContext(ctx, "Failed to close Kafka reader", "error", err)
-		}
-	}
-
-	c.cancel()
+	close(jobs)
 	c.wg.Wait()
 
 	return ctx.Err()
 }
 
+func (c *Consumer) Close() error {
+	for _, reader := range c.readers {
+		err := reader.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (c *Consumer) configureOffset(config *kafka.ReaderConfig) {
-	switch c.cfg.Options.Consumer.OffsetConfig.Type {
+	switch c.config.Options.Consumer.OffsetConfig.Type {
 	case "earliest":
 		config.StartOffset = kafka.FirstOffset
 	case "specific":
-		config.StartOffset = c.cfg.Options.Consumer.OffsetConfig.Value
+		config.StartOffset = c.config.Options.Consumer.OffsetConfig.Value
 	default:
 		config.StartOffset = kafka.LastOffset
 	}
@@ -132,7 +123,7 @@ func (c *Consumer) startWorkerPool(
 	jobs chan job,
 	handler func(context.Context, api.Envelope) error,
 ) {
-	poolSize := c.cfg.Options.Consumer.Pool.Size
+	poolSize := c.config.Options.Consumer.Pool.Size
 	if poolSize <= 0 {
 		poolSize = defaultPoolSize
 	}
@@ -171,7 +162,6 @@ func (c *Consumer) fetchMessages(ctx context.Context, r *kafka.Reader, jobs chan
 					return
 				}
 
-				c.logger.ErrorContext(ctx, "Failed to fetch message", "error", err)
 				time.Sleep(errorBackoffDelay)
 
 				continue
@@ -194,17 +184,14 @@ func (c *Consumer) handleMessage(
 ) {
 	env, err := c.serializer.Unmarshal(msg.Value, c.headerMap(msg.Headers))
 	if err != nil {
-		c.logger.ErrorContext(ctx, "Failed to unmarshal message", "error", err)
-
 		c.commitMessage(ctx, r, msg)
 
 		return
 	}
 
-	env = env.WithStamp(stamps.ReceivedStamp{Transport: c.cfg.Name})
+	env = env.WithStamp(stamps.ReceivedStamp{Transport: c.config.Name})
 
 	if handlerErr := handler(ctx, env); handlerErr != nil {
-		c.logger.ErrorContext(ctx, "Handler failed", "error", handlerErr)
 		c.commitMessage(ctx, r, msg)
 
 		return
@@ -214,15 +201,9 @@ func (c *Consumer) handleMessage(
 }
 
 func (c *Consumer) commitMessage(ctx context.Context, r *kafka.Reader, msg kafka.Message) {
-	switch c.cfg.Options.Consumer.Commit.Strategy {
+	switch c.config.Options.Consumer.Commit.Strategy {
 	case "auto":
-		if err := r.CommitMessages(ctx, msg); err != nil {
-			c.logger.ErrorContext(ctx, "Failed to commit message",
-				"topic", msg.Topic,
-				"partition", msg.Partition,
-				"offset", msg.Offset,
-				"error", err)
-		}
+		_ = r.CommitMessages(ctx, msg)
 	case "manual":
 	case "batch":
 		c.batchMutex.Lock()
@@ -231,7 +212,7 @@ func (c *Consumer) commitMessage(ctx context.Context, r *kafka.Reader, msg kafka
 		msgKey := fmt.Sprintf("%s-%d-%d", msg.Topic, msg.Partition, msg.Offset)
 		c.deferredCommits.Store(msgKey, messageWithReader{message: msg, reader: r})
 
-		if len(c.batchMessages) >= c.cfg.Options.Consumer.Commit.BatchSize {
+		if len(c.batchMessages) >= c.config.Options.Consumer.Commit.BatchSize {
 			c.batchMutex.Unlock()
 			c.commitBatch(ctx)
 		} else {
@@ -244,7 +225,7 @@ func (c *Consumer) commitMessage(ctx context.Context, r *kafka.Reader, msg kafka
 }
 
 func (c *Consumer) startBatchCommitter(ctx context.Context) {
-	ticker := time.NewTicker(c.cfg.Options.Consumer.Commit.Interval)
+	ticker := time.NewTicker(c.config.Options.Consumer.Commit.Interval)
 	defer ticker.Stop()
 
 	for {
@@ -310,13 +291,7 @@ func (c *Consumer) commitMessagesAndCleanup(
 	partitionOffsets map[int]kafka.Message,
 ) {
 	for _, msg := range partitionOffsets {
-		if err := reader.CommitMessages(ctx, msg); err != nil {
-			c.logger.ErrorContext(ctx, "Failed to commit message batch",
-				"topic", msg.Topic,
-				"partition", msg.Partition,
-				"offset", msg.Offset,
-				"error", err.Error())
-		} else {
+		if err := reader.CommitMessages(ctx, msg); err == nil {
 			c.cleanupCommittedMessages(messages, msg)
 		}
 	}

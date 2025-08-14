@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -11,14 +10,10 @@ import (
 	"github.com/gerfey/messenger/api"
 )
 
-type TransportFactory struct {
-	logger *slog.Logger
-}
+type TransportFactory struct{}
 
-func NewTransportFactory(logger *slog.Logger) api.TransportFactory {
-	return &TransportFactory{
-		logger: logger,
-	}
+func NewTransportFactory() api.TransportFactory {
+	return &TransportFactory{}
 }
 
 func (t *TransportFactory) Supports(dsn string) bool {
@@ -41,5 +36,5 @@ func (t *TransportFactory) Create(name string, dsn string, options []byte, ser a
 		Options: optsConfig,
 	}
 
-	return NewTransport(tCfg, t.logger, ser)
+	return NewTransport(tCfg, ser)
 }

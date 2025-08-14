@@ -26,15 +26,11 @@ type Closer interface {
 
 type Producer interface {
 	Send(context.Context, Envelope) error
+	Close() error
 }
 
 type Consumer interface {
 	Consume(context.Context, func(context.Context, Envelope) error) error
-}
-
-type Connection interface {
-	Connect() error
-	IsConnect() bool
 	Close() error
 }
 

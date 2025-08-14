@@ -2,6 +2,7 @@ package amqp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -32,7 +33,7 @@ func NewConsumer(config TransportConfig, connection ConnectionAMQP, serializer a
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
 	if !c.connection.IsConnect() {
-		return fmt.Errorf("amqp connection is not available")
+		return errors.New("amqp connection is not available")
 	}
 
 	ch, err := c.connection.Channel()
@@ -56,6 +57,10 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 	c.wg.Wait()
 
 	return ctx.Err()
+}
+
+func (c *Consumer) Close() error {
+	return nil
 }
 
 func (c *Consumer) startWorkerPool(

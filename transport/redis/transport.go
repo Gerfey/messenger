@@ -3,39 +3,45 @@ package redis
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
+
+	"github.com/redis/go-redis/v9"
 
 	"github.com/gerfey/messenger/api"
 )
 
-type Transport struct {
-	cfg        TransportConfig
-	producer   *Producer
-	consumer   *Consumer
-	serializer api.Serializer
-	logger     *slog.Logger
-	conn       *Connection
+type ConnectionRedis interface {
+	Client() *redis.Client
 }
 
-func NewTransport(cfg TransportConfig, logger *slog.Logger, ser api.Serializer) (api.Transport, error) {
-	conn, err := NewConnection(cfg.DSN)
-	if err != nil {
-		logger.Error("failed to connect", "error", err)
+type Transport struct {
+	cfg        TransportConfig
+	producer   api.Producer
+	consumer   api.Consumer
+	connection ConnectionRedis
+}
 
-		return nil, err
+func NewTransport(cfg TransportConfig, serializer api.Serializer) (api.Transport, error) {
+	connection, errConnection := NewConnection(cfg.DSN)
+	if errConnection != nil {
+		return nil, fmt.Errorf("failed to create connection: %w", errConnection)
 	}
 
-	producer := NewProducer(cfg, ser, conn, logger)
-	consumer := NewConsumer(cfg, ser, conn, logger)
+	producer, errProducer := NewProducer(cfg, serializer, connection)
+	if errProducer != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", errProducer)
+	}
+
+	consumer, errConsumer := NewConsumer(cfg, serializer, connection)
+	if errConsumer != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", errConsumer)
+	}
 
 	return &Transport{
 		cfg:        cfg,
 		producer:   producer,
 		consumer:   consumer,
-		serializer: ser,
-		logger:     logger,
-		conn:       conn,
+		connection: connection,
 	}, nil
 }
 
@@ -63,10 +69,14 @@ func (t *Transport) Setup(ctx context.Context) error {
 	stream := t.cfg.Options.Stream
 	group := t.cfg.Options.Group
 
-	_, err := t.conn.Client().XGroupCreateMkStream(ctx, stream, group, "$").Result()
+	_, err := t.connection.Client().XGroupCreateMkStream(ctx, stream, group, "$").Result()
 	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
 		return fmt.Errorf("failed to create consumer group: %w", err)
 	}
 
+	return nil
+}
+
+func (t *Transport) Close() error {
 	return nil
 }

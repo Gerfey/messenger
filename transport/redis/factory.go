@@ -2,7 +2,6 @@ package redis
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -11,21 +10,22 @@ import (
 	"github.com/gerfey/messenger/api"
 )
 
-type TransportFactory struct {
-	logger *slog.Logger
-}
+type TransportFactory struct{}
 
-func NewTransportFactory(logger *slog.Logger) api.TransportFactory {
-	return &TransportFactory{
-		logger: logger,
-	}
+func NewTransportFactory() api.TransportFactory {
+	return &TransportFactory{}
 }
 
 func (t *TransportFactory) Supports(dsn string) bool {
 	return strings.HasPrefix(dsn, "redis://")
 }
 
-func (t *TransportFactory) Create(name string, dsn string, options []byte, ser api.Serializer) (api.Transport, error) {
+func (t *TransportFactory) Create(
+	name string,
+	dsn string,
+	options []byte,
+	serializer api.Serializer,
+) (api.Transport, error) {
 	var optsConfig OptionsConfig
 	if err := defaults.Set(&optsConfig); err != nil {
 		return nil, fmt.Errorf("set defaults: %w", err)
@@ -41,5 +41,5 @@ func (t *TransportFactory) Create(name string, dsn string, options []byte, ser a
 		Options: optsConfig,
 	}
 
-	return NewTransport(tCfg, t.logger, ser)
+	return NewTransport(tCfg, serializer)
 }

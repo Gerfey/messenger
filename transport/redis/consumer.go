@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -19,59 +18,55 @@ const (
 )
 
 type Consumer struct {
-	cfg        TransportConfig
+	config     TransportConfig
 	serializer api.Serializer
-	conn       *Connection
-	logger     *slog.Logger
-	ctx        context.Context
-	cancel     context.CancelFunc
+	connection ConnectionRedis
 	wg         sync.WaitGroup
 }
 
-func NewConsumer(cfg TransportConfig, ser api.Serializer, conn *Connection, logger *slog.Logger) *Consumer {
-	ctx, cancel := context.WithCancel(context.Background())
-
+func NewConsumer(config TransportConfig, serializer api.Serializer, connection ConnectionRedis) (api.Consumer, error) {
 	return &Consumer{
-		cfg:        cfg,
-		serializer: ser,
-		conn:       conn,
-		logger:     logger,
-		ctx:        ctx,
-		cancel:     cancel,
-	}
+		config:     config,
+		serializer: serializer,
+		connection: connection,
+	}, nil
 }
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
-	group := c.cfg.Options.Group
-	stream := c.cfg.Options.Stream
+	group := c.config.Options.Group
+	stream := c.config.Options.Stream
 
-	_ = c.conn.Client().XGroupCreateMkStream(ctx, stream, group, "$")
+	_ = c.connection.Client().XGroupCreateMkStream(ctx, stream, group, "$")
 
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		c.consumeLoop(handler)
+		c.consumeLoop(ctx, handler)
 	}()
 
 	<-ctx.Done()
-	c.cancel()
+
 	c.wg.Wait()
 
 	return ctx.Err()
 }
 
-func (c *Consumer) consumeLoop(handler func(context.Context, api.Envelope) error) {
-	rdb := c.conn.Client()
-	stream := c.cfg.Options.Stream
-	group := c.cfg.Options.Group
-	consumer := c.cfg.Options.Consumer
+func (c *Consumer) Close() error {
+	return nil
+}
+
+func (c *Consumer) consumeLoop(ctx context.Context, handler func(context.Context, api.Envelope) error) {
+	rdb := c.connection.Client()
+	stream := c.config.Options.Stream
+	group := c.config.Options.Group
+	consumer := c.config.Options.Consumer
 
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		default:
-			streams, err := rdb.XReadGroup(c.ctx, &redis.XReadGroupArgs{
+			streams, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 				Group:    group,
 				Consumer: consumer,
 				Streams:  []string{stream, ">"},
@@ -80,32 +75,30 @@ func (c *Consumer) consumeLoop(handler func(context.Context, api.Envelope) error
 			}).Result()
 
 			if err != nil && !errors.Is(err, redis.Nil) {
-				c.logger.Error("XREADGROUP error", "error", err)
-
 				continue
 			}
 
 			for _, s := range streams {
 				for _, msg := range s.Messages {
-					c.handleMessage(msg, handler)
+					c.handleMessage(ctx, msg, handler)
 				}
 			}
 		}
 	}
 }
 
-func (c *Consumer) handleMessage(msg redis.XMessage, handler func(context.Context, api.Envelope) error) {
+func (c *Consumer) handleMessage(
+	ctx context.Context,
+	msg redis.XMessage,
+	handler func(context.Context, api.Envelope) error,
+) {
 	bodyRaw, ok := msg.Values["body"]
 	if !ok {
-		c.logger.Warn("missing 'body' field in message", "id", msg.ID)
-
 		return
 	}
 
 	bodyBytes, ok := bodyRaw.(string)
 	if !ok {
-		c.logger.Warn("invalid body format", "id", msg.ID)
-
 		return
 	}
 
@@ -120,20 +113,16 @@ func (c *Consumer) handleMessage(msg redis.XMessage, handler func(context.Contex
 
 	env, errUnmarshal := c.serializer.Unmarshal([]byte(bodyBytes), headers)
 	if errUnmarshal != nil {
-		c.logger.Error("failed to unmarshal", "error", errUnmarshal)
-
 		return
 	}
 
-	env = env.WithStamp(stamps.ReceivedStamp{Transport: c.cfg.Name})
+	env = env.WithStamp(stamps.ReceivedStamp{Transport: c.config.Name})
 
-	if errHandler := handler(c.ctx, env); errHandler != nil {
-		c.logger.Error("handler failed", "error", errHandler)
-
+	if errHandler := handler(ctx, env); errHandler != nil {
 		return
 	}
 
-	if err := c.conn.Client().XAck(c.ctx, c.cfg.Options.Stream, c.cfg.Options.Group, msg.ID).Err(); err != nil {
-		c.logger.Error("XACK failed", "id", msg.ID, "error", err)
+	if err := c.connection.Client().XAck(ctx, c.config.Options.Stream, c.config.Options.Group, msg.ID).Err(); err != nil {
+		return
 	}
 }

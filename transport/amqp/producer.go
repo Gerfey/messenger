@@ -2,8 +2,8 @@ package amqp
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -14,7 +14,6 @@ type Producer struct {
 	config     TransportConfig
 	connection ConnectionAMQP
 	serializer api.Serializer
-	lock       sync.Mutex
 }
 
 func NewProducer(config TransportConfig, connection ConnectionAMQP, serializer api.Serializer) (api.Producer, error) {
@@ -27,7 +26,7 @@ func NewProducer(config TransportConfig, connection ConnectionAMQP, serializer a
 
 func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 	if !p.connection.IsConnect() {
-		return fmt.Errorf("amqp connection is not available")
+		return errors.New("amqp connection is not available")
 	}
 
 	body, headersMap, err := p.serializer.Marshal(env)
@@ -69,5 +68,9 @@ func (p *Producer) Send(ctx context.Context, env api.Envelope) error {
 		)
 	}
 
+	return nil
+}
+
+func (p *Producer) Close() error {
 	return nil
 }

@@ -200,7 +200,7 @@ func (t *TestTransport) Start(_ context.Context) error {
 	return nil
 }
 
-func (t *TestTransport) Stop() error {
+func (t *TestTransport) Close() error {
 	t.IsStopped = true
 
 	return nil

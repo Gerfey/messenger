@@ -11,8 +11,10 @@ import (
 )
 
 type ConnectionAMQP interface {
-	api.Connection
 	Channel() (*amqp.Channel, error)
+	Connect() error
+	IsConnect() bool
+	Close() error
 }
 
 type Transport struct {
@@ -20,7 +22,6 @@ type Transport struct {
 	producer   api.Producer
 	consumer   api.Consumer
 	connection ConnectionAMQP
-	serializer api.Serializer
 }
 
 func NewTransport(
@@ -47,7 +48,6 @@ func NewTransport(
 		producer:   producer,
 		consumer:   consumer,
 		connection: connection,
-		serializer: serializer,
 	}, nil
 }
 
