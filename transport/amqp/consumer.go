@@ -2,7 +2,9 @@ package amqp
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -10,22 +12,31 @@ import (
 	"github.com/gerfey/messenger/core/stamps"
 )
 
+const (
+	defaultPoolSize = 10
+)
+
 type Consumer struct {
-	conn       *Connection
-	cfg        TransportConfig
+	config     TransportConfig
+	connection ConnectionAMQP
 	serializer api.Serializer
+	wg         sync.WaitGroup
 }
 
-func NewConsumer(conn *Connection, cfg TransportConfig, serializer api.Serializer) *Consumer {
+func NewConsumer(config TransportConfig, connection ConnectionAMQP, serializer api.Serializer) (api.Consumer, error) {
 	return &Consumer{
-		conn:       conn,
-		cfg:        cfg,
+		config:     config,
+		connection: connection,
 		serializer: serializer,
-	}
+	}, nil
 }
 
 func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
-	ch, err := c.conn.Channel()
+	if !c.connection.IsConnect() {
+		return errors.New("amqp connection is not available")
+	}
+
+	ch, err := c.connection.Channel()
 	if err != nil {
 		return fmt.Errorf("failed to create AMQP channel for consumer: %w", err)
 	}
@@ -42,8 +53,14 @@ func (c *Consumer) Consume(ctx context.Context, handler func(context.Context, ap
 	}
 
 	<-ctx.Done()
+	close(jobs)
+	c.wg.Wait()
 
 	return ctx.Err()
+}
+
+func (c *Consumer) Close() error {
+	return nil
 }
 
 func (c *Consumer) startWorkerPool(
@@ -51,22 +68,39 @@ func (c *Consumer) startWorkerPool(
 	jobs chan job,
 	handler func(context.Context, api.Envelope) error,
 ) {
-	poolSize := c.cfg.Options.ConsumerPoolSize
+	poolSize := c.config.Options.Pool.Size
 	if poolSize <= 0 {
-		poolSize = 10
+		poolSize = defaultPoolSize
 	}
 
 	for range poolSize {
-		go func() {
-			for j := range jobs {
-				c.handleDelivery(ctx, j.d, handler)
+		c.wg.Add(1)
+		go c.startWorker(ctx, jobs, handler)
+	}
+}
+
+func (c *Consumer) startWorker(
+	ctx context.Context,
+	jobs chan job,
+	handler func(context.Context, api.Envelope) error,
+) {
+	defer c.wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case j, ok := <-jobs:
+			if !ok {
+				return
 			}
-		}()
+			c.handleDelivery(ctx, j.d, handler)
+		}
 	}
 }
 
 func (c *Consumer) startQueueConsumers(ctx context.Context, ch *amqp.Channel, jobs chan job) error {
-	for queueName := range c.cfg.Options.Queues {
+	for queueName := range c.config.Options.Queues {
 		msgs, consumeErr := ch.ConsumeWithContext(
 			ctx,
 			queueName,
@@ -91,8 +125,6 @@ func (c *Consumer) processQueueMessages(ctx context.Context, jobs chan job, mess
 	for {
 		select {
 		case <-ctx.Done():
-			close(jobs)
-
 			return
 		case d, ok := <-messages:
 			if !ok {
@@ -123,7 +155,7 @@ func (c *Consumer) handleDelivery(
 	}
 
 	env = env.WithStamp(stamps.ReceivedStamp{
-		Transport: c.cfg.Name,
+		Transport: c.config.Name,
 	})
 
 	err = handler(ctx, env)

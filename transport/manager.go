@@ -53,6 +53,14 @@ func (m *Manager) Start(ctx context.Context, consumeOnly []string) {
 	m.running = true
 
 	for _, t := range m.transports {
+		if s, ok := t.(api.SetupableTransport); ok {
+			if err := s.Setup(ctx); err != nil {
+				m.logger.ErrorContext(ctx, "failed to setup transport", "name", t.Name(), "error", err)
+
+				continue
+			}
+		}
+
 		if !m.stringInSlice(t.Name(), consumeOnly) {
 			continue
 		}
@@ -64,6 +72,12 @@ func (m *Manager) Stop() {
 	m.mu.Lock()
 	m.running = false
 	m.mu.Unlock()
+
+	for _, t := range m.transports {
+		if errClose := t.Close(); errClose != nil {
+			m.logger.Error("failed to close transport", "name", t.Name(), "error", errClose)
+		}
+	}
 
 	m.wg.Wait()
 }
@@ -129,7 +143,7 @@ func (m *Manager) receiveTransport(ctx context.Context, t api.Transport) {
 		})
 
 		if err != nil {
-			m.logger.Error("receive error", "error", err)
+			m.logger.ErrorContext(ctx, "receive error", "transport", t.Name(), "error", err)
 		}
 	}(t)
 }

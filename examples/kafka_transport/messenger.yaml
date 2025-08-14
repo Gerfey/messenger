@@ -1,0 +1,47 @@
+default_bus: default
+failure_transport: failed_messages
+
+buses:
+  default: ~
+
+transports:
+  kafka:
+    dsn: "kafka://localhost:29092/"
+    serializer: default.transport.serializer
+    options:
+      topics:
+        - my-topic
+      group: my-group
+
+      producer:
+        async: true
+        auto_topic_creation: true
+        required_acks: 1   # -1: all replicas (strongest durability), 0: no ack, 1: leader only
+        batch_size: 256
+        batch_timeout: 10ms
+        write_timeout: 10s
+        read_timeout: 10s
+        balancer: round_robin    # least_bytes, hash, round_robin
+
+      consumer:
+        offset:
+          type: earliest    # earliest, latest, specific
+          value: 0    # used only for "specific"
+        commit:
+          strategy: batch   # auto, batch, deferred
+          interval: 500ms
+          batch_size: 10
+        rebalance:
+          strategy: roundrobin    # roundrobin, range
+        pool:
+          size: 3
+          min_size: 2
+          max_size: 10
+        session_timeout: 10s
+        heartbeat_interval: 2s
+
+      key:
+        strategy: message_id    # none / message_id
+
+routing:
+  "*message.ExampleHelloMessage": kafka

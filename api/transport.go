@@ -3,13 +3,12 @@ package api
 import (
 	"context"
 	"reflect"
-
-	"github.com/gerfey/messenger/config"
 )
 
 type Transport interface {
 	Sender
 	Receiver
+	Closer
 }
 
 type Sender interface {
@@ -21,9 +20,28 @@ type Receiver interface {
 	Receive(context.Context, func(context.Context, Envelope) error) error
 }
 
+type Closer interface {
+	Close() error
+}
+
+type Producer interface {
+	Send(context.Context, Envelope) error
+	Close() error
+}
+
+type Consumer interface {
+	Consume(context.Context, func(context.Context, Envelope) error) error
+	Close() error
+}
+
 type RetryableTransport interface {
 	Transport
 	Retry(context.Context, Envelope) error
+}
+
+type SetupableTransport interface {
+	Transport
+	Setup(ctx context.Context) error
 }
 
 type SenderLocator interface {
@@ -35,7 +53,7 @@ type SenderLocator interface {
 
 type TransportFactory interface {
 	Supports(string) bool
-	Create(string, string, config.OptionsConfig) (Transport, error)
+	Create(string, string, []byte, Serializer) (Transport, error)
 }
 
 type RoutedMessage interface {

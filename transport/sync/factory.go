@@ -1,29 +1,25 @@
 package sync
 
 import (
-	"log/slog"
 	"strings"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 )
 
-type Factory struct {
-	logger  *slog.Logger
+type TransportFactory struct {
 	locator api.BusLocator
 }
 
-func NewTransportFactory(logger *slog.Logger, locator api.BusLocator) api.TransportFactory {
-	return &Factory{
-		logger:  logger,
+func NewTransportFactory(locator api.BusLocator) api.TransportFactory {
+	return &TransportFactory{
 		locator: locator,
 	}
 }
 
-func (f *Factory) Supports(dsn string) bool {
+func (f *TransportFactory) Supports(dsn string) bool {
 	return strings.HasPrefix(dsn, "sync://")
 }
 
-func (f *Factory) Create(_ string, _ string, _ config.OptionsConfig) (api.Transport, error) {
+func (f *TransportFactory) Create(_ string, _ string, _ []byte, _ api.Serializer) (api.Transport, error) {
 	return NewTransport(f.locator), nil
 }

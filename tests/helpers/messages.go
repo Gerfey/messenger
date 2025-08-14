@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/config"
 )
 
 type TestMessage struct {
@@ -201,7 +200,7 @@ func (t *TestTransport) Start(_ context.Context) error {
 	return nil
 }
 
-func (t *TestTransport) Stop() error {
+func (t *TestTransport) Close() error {
 	t.IsStopped = true
 
 	return nil
@@ -221,7 +220,7 @@ func (f *TestTransportFactory) Supports(_ string) bool {
 	return true
 }
 
-func (f *TestTransportFactory) Create(_ string, _ string, _ config.OptionsConfig) (api.Transport, error) {
+func (f *TestTransportFactory) Create(_ string, _ string, _ []byte, _ api.Serializer) (api.Transport, error) {
 	if f.CreateError != nil {
 		return nil, f.CreateError
 	}

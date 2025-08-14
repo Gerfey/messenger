@@ -1,14 +1,15 @@
 package amqp_test
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"gopkg.in/yaml.v3"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/serializer"
+
 	"github.com/gerfey/messenger/tests/mocks"
 	"github.com/gerfey/messenger/transport/amqp"
 )
@@ -17,10 +18,7 @@ func TestNewTransportFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-	mockResolver := mocks.NewMockTypeResolver(ctrl)
-
-	factory := amqp.NewTransportFactory(logger, mockResolver)
+	factory := amqp.NewTransportFactory()
 
 	assert.NotNil(t, factory)
 	assert.IsType(t, &amqp.TransportFactory{}, factory)
@@ -64,9 +62,7 @@ func TestTransportFactory_Supports(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			logger := slog.Default()
-			mockResolver := mocks.NewMockTypeResolver(ctrl)
-			factory := amqp.NewTransportFactory(logger, mockResolver)
+			factory := amqp.NewTransportFactory()
 
 			got := factory.Supports(tt.dsn)
 			assert.Equal(t, tt.want, got)
@@ -78,23 +74,22 @@ func TestTransportFactory_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := amqp.NewTransportFactory(logger, mockResolver)
+	factory := amqp.NewTransportFactory()
 
 	name := "test-amqp"
 
 	dsn := "amqp://guest:guest@non-existent-host:5672/"
-	options := config.OptionsConfig{
+	options := amqp.OptionsConfig{
 		AutoSetup: true,
-		Exchange: config.ExchangeConfig{
+		Exchange: amqp.ExchangeConfig{
 			Name:       "test-exchange",
 			Type:       "direct",
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
 		},
-		Queues: map[string]config.Queue{
+		Queues: map[string]amqp.Queue{
 			"test-queue": {
 				BindingKeys: []string{"test-key"},
 				Durable:     true,
@@ -104,7 +99,12 @@ func TestTransportFactory_Create(t *testing.T) {
 		},
 	}
 
-	_, err := factory.Create(name, dsn, options)
+	ser := serializer.NewSerializer(mockResolver)
+
+	optionsBytes, err := yaml.Marshal(options)
+	require.NoError(t, err)
+
+	_, err = factory.Create(name, dsn, optionsBytes, ser)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to connect")

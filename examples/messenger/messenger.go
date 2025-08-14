@@ -3,21 +3,25 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/gerfey/messenger/builder"
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/builder"
+	"github.com/gerfey/messenger/core/config"
 	"github.com/gerfey/messenger/examples/messenger/handler"
 	"github.com/gerfey/messenger/examples/messenger/message"
 	"github.com/gerfey/messenger/examples/messenger/middleware"
 )
 
 const (
-	waitDurationSeconds = 20
+	waitDurationSeconds = 5
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	log := slog.Default()
 
@@ -41,6 +45,9 @@ func main() {
 		return
 	}
 
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
 		if runErr := messenger.Run(ctx); runErr != nil {
 			log.Error("messenger run failed", "error", runErr)
@@ -63,6 +70,15 @@ func main() {
 		log.Error("failed to dispatch message", "error", err)
 
 		return
+	}
+
+	select {
+	case sig := <-sigChan:
+		log.Info("Received signal, shutting down gracefully", "signal", sig)
+		cancel()
+	case <-time.After(waitDurationSeconds * time.Second):
+		log.Info("Timeout reached, shutting down")
+		cancel()
 	}
 
 	time.Sleep(waitDurationSeconds * time.Second)

@@ -1,14 +1,15 @@
 package inmemory_test
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"gopkg.in/yaml.v3"
 
-	"github.com/gerfey/messenger/config"
+	"github.com/gerfey/messenger/core/serializer"
+
 	"github.com/gerfey/messenger/tests/mocks"
 	"github.com/gerfey/messenger/transport/inmemory"
 )
@@ -17,10 +18,7 @@ func TestNewTransportFactory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-	mockResolver := mocks.NewMockTypeResolver(ctrl)
-
-	factory := inmemory.NewTransportFactory(logger, mockResolver)
+	factory := inmemory.NewTransportFactory()
 
 	assert.NotNil(t, factory)
 	assert.IsType(t, &inmemory.TransportFactory{}, factory)
@@ -30,9 +28,7 @@ func TestTransportFactory_Supports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
-	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := inmemory.NewTransportFactory(logger, mockResolver)
+	factory := inmemory.NewTransportFactory()
 
 	testCases := []struct {
 		name     string
@@ -73,15 +69,18 @@ func TestTransportFactory_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := slog.Default()
 	mockResolver := mocks.NewMockTypeResolver(ctrl)
-	factory := inmemory.NewTransportFactory(logger, mockResolver)
+	factory := inmemory.NewTransportFactory()
 
 	name := "test-inmemory"
 	dsn := "in-memory://test"
-	options := config.OptionsConfig{}
+	options := map[string]any{}
+	ser := serializer.NewSerializer(mockResolver)
 
-	transport, err := factory.Create(name, dsn, options)
+	optionsBytes, err := yaml.Marshal(options)
+	require.NoError(t, err)
+
+	transport, err := factory.Create(name, dsn, optionsBytes, ser)
 
 	require.NoError(t, err)
 	assert.NotNil(t, transport)

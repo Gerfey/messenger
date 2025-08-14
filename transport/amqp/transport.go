@@ -3,66 +3,60 @@ package amqp
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"reflect"
 
+	amqp "github.com/rabbitmq/amqp091-go"
+
 	"github.com/gerfey/messenger/api"
-	"github.com/gerfey/messenger/serializer"
 )
 
-type Transport struct {
-	cfg        TransportConfig
-	publisher  *Publisher
-	consumer   *Consumer
-	retry      *Retry
-	serializer api.Serializer
-	conn       *Connection
-	logger     *slog.Logger
+type ConnectionAMQP interface {
+	Channel() (*amqp.Channel, error)
+	Connect() error
+	IsConnect() bool
+	Close() error
 }
 
-func NewTransport(cfg TransportConfig, resolver api.TypeResolver, logger *slog.Logger) (api.Transport, error) {
-	conn, err := NewConnection(cfg.DSN)
-	if err != nil {
-		logger.Error("failed to create AMQP connection", "dsn", cfg.DSN, "error", err)
+type Transport struct {
+	config     TransportConfig
+	producer   api.Producer
+	consumer   api.Consumer
+	connection ConnectionAMQP
+}
 
-		return nil, err
+func NewTransport(
+	config TransportConfig,
+	serializer api.Serializer,
+) (api.Transport, error) {
+	connection, errConnection := NewConnection(config.DSN)
+	if errConnection != nil {
+		return nil, fmt.Errorf("failed to create connection: %w", errConnection)
 	}
 
-	ser := serializer.NewSerializer(resolver)
-
-	pub := NewPublisher(conn, cfg, ser)
-	cons := NewConsumer(conn, cfg, ser)
-	ret := NewRetry(conn, cfg, ser)
-
-	transport := &Transport{
-		cfg:        cfg,
-		publisher:  pub,
-		consumer:   cons,
-		retry:      ret,
-		serializer: ser,
-		conn:       conn,
-		logger:     logger,
+	producer, errProducer := NewProducer(config, connection, serializer)
+	if errProducer != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", errProducer)
 	}
 
-	if cfg.Options.AutoSetup {
-		if setupErr := transport.setup(); setupErr != nil {
-			logger.Error("failed to setup AMQP transport", "transport", cfg.Name, "error", setupErr)
-
-			return nil, setupErr
-		}
-
-		logger.Debug("AMQP transport setup completed", "transport", cfg.Name)
+	consumer, errConsumer := NewConsumer(config, connection, serializer)
+	if errConsumer != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", errConsumer)
 	}
 
-	return transport, nil
+	return &Transport{
+		config:     config,
+		producer:   producer,
+		consumer:   consumer,
+		connection: connection,
+	}, nil
 }
 
 func (t *Transport) Name() string {
-	return t.cfg.Name
+	return t.config.Name
 }
 
 func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
-	return t.publisher.Publish(ctx, env)
+	return t.producer.Send(ctx, env)
 }
 
 func (t *Transport) Receive(ctx context.Context, handler func(context.Context, api.Envelope) error) error {
@@ -70,14 +64,16 @@ func (t *Transport) Receive(ctx context.Context, handler func(context.Context, a
 }
 
 func (t *Transport) Retry(ctx context.Context, env api.Envelope) error {
-	return t.retry.Retry(ctx, env)
+	return t.producer.Send(ctx, env)
 }
 
-func (t *Transport) setup() error {
-	ch, err := t.conn.Channel()
-	if err != nil {
-		t.logger.Error("failed to open channel", "error", err)
+func (t *Transport) Setup(_ context.Context) error {
+	if !t.config.Options.AutoSetup {
+		return nil
+	}
 
+	ch, err := t.connection.Channel()
+	if err != nil {
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 	defer func() {
@@ -85,21 +81,19 @@ func (t *Transport) setup() error {
 	}()
 
 	err = ch.ExchangeDeclare(
-		t.cfg.Options.Exchange.Name,
-		t.cfg.Options.Exchange.Type,
-		t.cfg.Options.Exchange.Durable,
-		t.cfg.Options.Exchange.AutoDelete,
-		t.cfg.Options.Exchange.Internal,
+		t.config.Options.Exchange.Name,
+		t.config.Options.Exchange.Type,
+		t.config.Options.Exchange.Durable,
+		t.config.Options.Exchange.AutoDelete,
+		t.config.Options.Exchange.Internal,
 		false,
 		nil,
 	)
 	if err != nil {
-		t.logger.Error("failed to declare exchange", "exchange", t.cfg.Options.Exchange.Name, "error", err)
-
 		return fmt.Errorf("failed to declare exchange: %w", err)
 	}
 
-	for queueName, queueCfg := range t.cfg.Options.Queues {
+	for queueName, queueCfg := range t.config.Options.Queues {
 		_, err = ch.QueueDeclare(
 			queueName,
 			queueCfg.Durable,
@@ -109,8 +103,6 @@ func (t *Transport) setup() error {
 			nil,
 		)
 		if err != nil {
-			t.logger.Error("declare queue", "queue", queueName, "error", err)
-
 			return fmt.Errorf("declare queue: %w", err)
 		}
 
@@ -124,16 +116,22 @@ func (t *Transport) setup() error {
 			bindErr := ch.QueueBind(
 				queueName,
 				bindingKey,
-				t.cfg.Options.Exchange.Name,
+				t.config.Options.Exchange.Name,
 				false,
 				nil,
 			)
 			if bindErr != nil {
-				t.logger.Error("bind queue", "queue", queueName, "binding_key", bindingKey, "error", bindErr)
-
 				return fmt.Errorf("bind queue: %w", bindErr)
 			}
 		}
+	}
+
+	return nil
+}
+
+func (t *Transport) Close() error {
+	if err := t.connection.Close(); err != nil {
+		return fmt.Errorf("failed to close connection: %w", err)
 	}
 
 	return nil

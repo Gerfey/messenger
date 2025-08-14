@@ -6,7 +6,11 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/gerfey/messenger/config"
+	"gopkg.in/yaml.v3"
+
+	"github.com/gerfey/messenger/core/config"
+
+	"github.com/gerfey/messenger/transport/amqp"
 )
 
 func main() {
@@ -39,13 +43,18 @@ func main() {
 			fmt.Printf("      MaxDelay: %v\n", transport.RetryStrategy.MaxDelay)
 		}
 
+		rawYAML, _ := yaml.Marshal(transport.Options)
+
+		var opts amqp.OptionsConfig
+		_ = yaml.Unmarshal(rawYAML, &opts)
+
 		fmt.Printf("    Options:\n")
-		fmt.Printf("      AutoSetup: %v\n", transport.Options.AutoSetup)
+		fmt.Printf("      AutoSetup: %v\n", opts.AutoSetup)
 		fmt.Printf("      Exchange:\n")
-		fmt.Printf("        Name: %s\n", transport.Options.Exchange.Name)
-		fmt.Printf("        Type: %s\n", transport.Options.Exchange.Type)
-		fmt.Printf("        Durable: %v\n", transport.Options.Exchange.Durable)
-		fmt.Printf("        AutoDelete: %v\n", transport.Options.Exchange.AutoDelete)
-		fmt.Printf("        Internal: %v\n", transport.Options.Exchange.Internal)
+		fmt.Printf("        Name: %s\n", opts.Exchange.Name)
+		fmt.Printf("        Type: %s\n", opts.Exchange.Type)
+		fmt.Printf("        Durable: %v\n", opts.Exchange.Durable)
+		fmt.Printf("        AutoDelete: %v\n", opts.Exchange.AutoDelete)
+		fmt.Printf("        Internal: %v\n", opts.Exchange.Internal)
 	}
 }

@@ -6,6 +6,7 @@ type Builder interface {
 	RegisterStamp(any)
 	RegisterListener(any, any)
 	RegisterMiddleware(string, Middleware)
+	RegisterSerializer(string, Serializer)
 	RegisterTransportFactory(TransportFactory)
 	Build() (Messenger, error)
 }

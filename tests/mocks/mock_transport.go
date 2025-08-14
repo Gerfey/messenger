@@ -14,7 +14,6 @@ import (
 	reflect "reflect"
 
 	api "github.com/gerfey/messenger/api"
-	config "github.com/gerfey/messenger/config"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,6 +39,20 @@ func NewMockTransport(ctrl *gomock.Controller) *MockTransport {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockTransport) EXPECT() *MockTransportMockRecorder {
 	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockTransport) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockTransportMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockTransport)(nil).Close))
 }
 
 // Name mocks base method.
@@ -174,6 +187,148 @@ func (mr *MockReceiverMockRecorder) Receive(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockReceiver)(nil).Receive), arg0, arg1)
 }
 
+// MockCloser is a mock of Closer interface.
+type MockCloser struct {
+	ctrl     *gomock.Controller
+	recorder *MockCloserMockRecorder
+	isgomock struct{}
+}
+
+// MockCloserMockRecorder is the mock recorder for MockCloser.
+type MockCloserMockRecorder struct {
+	mock *MockCloser
+}
+
+// NewMockCloser creates a new mock instance.
+func NewMockCloser(ctrl *gomock.Controller) *MockCloser {
+	mock := &MockCloser{ctrl: ctrl}
+	mock.recorder = &MockCloserMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCloser) EXPECT() *MockCloserMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockCloser) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockCloserMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockCloser)(nil).Close))
+}
+
+// MockProducer is a mock of Producer interface.
+type MockProducer struct {
+	ctrl     *gomock.Controller
+	recorder *MockProducerMockRecorder
+	isgomock struct{}
+}
+
+// MockProducerMockRecorder is the mock recorder for MockProducer.
+type MockProducerMockRecorder struct {
+	mock *MockProducer
+}
+
+// NewMockProducer creates a new mock instance.
+func NewMockProducer(ctrl *gomock.Controller) *MockProducer {
+	mock := &MockProducer{ctrl: ctrl}
+	mock.recorder = &MockProducerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockProducer) EXPECT() *MockProducerMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockProducer) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockProducerMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockProducer)(nil).Close))
+}
+
+// Send mocks base method.
+func (m *MockProducer) Send(arg0 context.Context, arg1 api.Envelope) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Send", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Send indicates an expected call of Send.
+func (mr *MockProducerMockRecorder) Send(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockProducer)(nil).Send), arg0, arg1)
+}
+
+// MockConsumer is a mock of Consumer interface.
+type MockConsumer struct {
+	ctrl     *gomock.Controller
+	recorder *MockConsumerMockRecorder
+	isgomock struct{}
+}
+
+// MockConsumerMockRecorder is the mock recorder for MockConsumer.
+type MockConsumerMockRecorder struct {
+	mock *MockConsumer
+}
+
+// NewMockConsumer creates a new mock instance.
+func NewMockConsumer(ctrl *gomock.Controller) *MockConsumer {
+	mock := &MockConsumer{ctrl: ctrl}
+	mock.recorder = &MockConsumerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConsumer) EXPECT() *MockConsumerMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockConsumer) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockConsumerMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockConsumer)(nil).Close))
+}
+
+// Consume mocks base method.
+func (m *MockConsumer) Consume(arg0 context.Context, arg1 func(context.Context, api.Envelope) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Consume", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Consume indicates an expected call of Consume.
+func (mr *MockConsumerMockRecorder) Consume(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Consume", reflect.TypeOf((*MockConsumer)(nil).Consume), arg0, arg1)
+}
+
 // MockRetryableTransport is a mock of RetryableTransport interface.
 type MockRetryableTransport struct {
 	ctrl     *gomock.Controller
@@ -196,6 +351,20 @@ func NewMockRetryableTransport(ctrl *gomock.Controller) *MockRetryableTransport 
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRetryableTransport) EXPECT() *MockRetryableTransportMockRecorder {
 	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockRetryableTransport) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockRetryableTransportMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockRetryableTransport)(nil).Close))
 }
 
 // Name mocks base method.
@@ -252,6 +421,100 @@ func (m *MockRetryableTransport) Send(arg0 context.Context, arg1 api.Envelope) e
 func (mr *MockRetryableTransportMockRecorder) Send(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockRetryableTransport)(nil).Send), arg0, arg1)
+}
+
+// MockSetupableTransport is a mock of SetupableTransport interface.
+type MockSetupableTransport struct {
+	ctrl     *gomock.Controller
+	recorder *MockSetupableTransportMockRecorder
+	isgomock struct{}
+}
+
+// MockSetupableTransportMockRecorder is the mock recorder for MockSetupableTransport.
+type MockSetupableTransportMockRecorder struct {
+	mock *MockSetupableTransport
+}
+
+// NewMockSetupableTransport creates a new mock instance.
+func NewMockSetupableTransport(ctrl *gomock.Controller) *MockSetupableTransport {
+	mock := &MockSetupableTransport{ctrl: ctrl}
+	mock.recorder = &MockSetupableTransportMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSetupableTransport) EXPECT() *MockSetupableTransportMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockSetupableTransport) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockSetupableTransportMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockSetupableTransport)(nil).Close))
+}
+
+// Name mocks base method.
+func (m *MockSetupableTransport) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockSetupableTransportMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockSetupableTransport)(nil).Name))
+}
+
+// Receive mocks base method.
+func (m *MockSetupableTransport) Receive(arg0 context.Context, arg1 func(context.Context, api.Envelope) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Receive", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Receive indicates an expected call of Receive.
+func (mr *MockSetupableTransportMockRecorder) Receive(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockSetupableTransport)(nil).Receive), arg0, arg1)
+}
+
+// Send mocks base method.
+func (m *MockSetupableTransport) Send(arg0 context.Context, arg1 api.Envelope) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Send", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Send indicates an expected call of Send.
+func (mr *MockSetupableTransportMockRecorder) Send(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockSetupableTransport)(nil).Send), arg0, arg1)
+}
+
+// Setup mocks base method.
+func (m *MockSetupableTransport) Setup(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Setup", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Setup indicates an expected call of Setup.
+func (mr *MockSetupableTransportMockRecorder) Setup(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Setup", reflect.TypeOf((*MockSetupableTransport)(nil).Setup), ctx)
 }
 
 // MockSenderLocator is a mock of SenderLocator interface.
@@ -355,18 +618,18 @@ func (m *MockTransportFactory) EXPECT() *MockTransportFactoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockTransportFactory) Create(arg0, arg1 string, arg2 config.OptionsConfig) (api.Transport, error) {
+func (m *MockTransportFactory) Create(arg0, arg1 string, arg2 []byte, arg3 api.Serializer) (api.Transport, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(api.Transport)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockTransportFactoryMockRecorder) Create(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockTransportFactoryMockRecorder) Create(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockTransportFactory)(nil).Create), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockTransportFactory)(nil).Create), arg0, arg1, arg2, arg3)
 }
 
 // Supports mocks base method.

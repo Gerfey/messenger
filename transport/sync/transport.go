@@ -17,7 +17,7 @@ func NewTransport(locator api.BusLocator) api.Transport {
 	return &Transport{locator: locator}
 }
 
-func (t *Transport) Send(_ context.Context, env api.Envelope) error {
+func (t *Transport) Send(ctx context.Context, env api.Envelope) error {
 	busNameStump, ok := envelope.LastStampOf[stamps.BusNameStamp](env)
 	if !ok {
 		return errors.New("no BusNameStamp found in envelope")
@@ -30,7 +30,7 @@ func (t *Transport) Send(_ context.Context, env api.Envelope) error {
 
 	env = env.WithStamp(stamps.ReceivedStamp{Transport: t.Name()})
 
-	_, err := messageBus.Dispatch(context.Background(), env)
+	_, err := messageBus.Dispatch(ctx, env)
 	if err != nil {
 		return err
 	}
@@ -44,4 +44,8 @@ func (t *Transport) Receive(_ context.Context, _ func(context.Context, api.Envel
 
 func (t *Transport) Name() string {
 	return "sync"
+}
+
+func (t *Transport) Close() error {
+	return nil
 }
